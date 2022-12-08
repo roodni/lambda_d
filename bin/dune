@@ -1,0 +1,4 @@
+(executable
+ (public_name lambda_d)
+ (name main)
+ (libraries lambda_d))

@@ -12,15 +12,14 @@
 
 (maintainers "Maintainer Name")
 
-(license LICENSE)
-
 (documentation https://url/to/documentation)
 
 (package
  (name lambda_d)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune menhir)
+ (depends ocaml dune menhir
+  (ounit2 :with-test))
  (tags
   (topics "to describe" your project)))
 

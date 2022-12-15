@@ -19,7 +19,7 @@ rule main = parse
   | "]" { P.RBRACKET }
   | "." { P.DOT }
   | "," { P.COMMA }
-  | ['A'-'Z' 'a'-'z'] { P.VAR (Lexing.lexeme lexbuf) }
+  | ['A'-'Z' 'a'-'z'] { P.VAR (Named (Lexing.lexeme lexbuf)) }
   | ['A'-'Z' 'a'-'z'] ['A'-'Z' 'a'-'z' '0'-'9' '_']+ { P.CVAR (Lexing.lexeme lexbuf) }
   | eof { P.EOF }
   | _ { raise (Error lexbuf) }

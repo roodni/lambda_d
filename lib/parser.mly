@@ -1,5 +1,6 @@
 %{
 open Syntax
+open Term
 %}
 
 %token ASTER
@@ -15,12 +16,12 @@ open Syntax
 %token COMMA
 
 %token <Syntax.var> VAR
-%token <Syntax.cvar> CVAR
+%token <string> CVAR
 
 %token EOF
 
 %start main
-%type <term> main
+%type <Term.t> main
 
 %%
 

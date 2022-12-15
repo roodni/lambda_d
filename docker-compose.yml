@@ -1,0 +1,5 @@
+services:
+  lambda:
+    build: .
+    volumes:
+      - ./inputs:/work/inputs

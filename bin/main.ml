@@ -19,14 +19,16 @@ let intaractive () =
       try read_line () with
       | End_of_file -> exit 0
     in
-    let term = string_to_term line in
-    Term.print term;
-    print_newline ();
-    loop ()
+    match string_to_term line with
+    | term ->
+        Term.print term;
+        print_newline ();
+        loop ()
+    | exception Invalid_argument _ ->
+       printf "parse error\n";
+       loop ()
   in
   loop ()
-
-
 
 let fileloader path =
   let channel = open_in path in

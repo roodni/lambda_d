@@ -36,7 +36,7 @@ let fileloader path =
   let l2 = input_line channel in
   let t1 = string_to_term l1 in
   let t2 = string_to_term l2 in
-  if Term.alpha_equal t1 t2 then begin
+  if Judge.alpha_equal t1 t2 then begin
     printf "alpha-equivalent\n";
   end else begin
     printf "NOT alpha-equivalent\n";

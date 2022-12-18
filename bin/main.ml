@@ -40,7 +40,7 @@ let fileloader path =
         let cnt, eq_sets =
           List.fold_left_map
             (fun (cnt: int) (eq_set: Term.t list) ->
-              let res = List.map (Judge.alpha_equal term) eq_set in
+              let res = List.map (Judge.alpha_equal2 term) eq_set in
               if List.for_all Fun.id res then (* 同じだった *)
                 (cnt + 1, term :: eq_set)
               else if List.for_all not res then (* 違った *)
@@ -59,14 +59,14 @@ let fileloader path =
   let eq_sets = lineloop [] in
   List.iter
     (fun eq_set ->
-      printf "{\n";
-      List.iter
-        (fun term ->
-          printf " ";
+      printf "{ ";
+      List.iteri
+        (fun i term ->
+          if i > 0 then  printf "\n  ";
           Term.print term;
-          printf "\n")
+        )
         (List.rev eq_set);
-      printf "}\n";
+      printf " }\n\n";
     )
     (List.rev eq_sets)
 

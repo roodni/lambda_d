@@ -1,4 +1,5 @@
 open Printf
+open Scanf
 
 open Lambda_d
 open Syntax
@@ -30,7 +31,7 @@ let intaractive () =
   in
   loop ()
 
-let fileloader path =
+(* let classify_term path =
   let channel = open_in path in
   let rec lineloop eq_sets =
     match input_line channel with
@@ -40,7 +41,7 @@ let fileloader path =
         let cnt, eq_sets =
           List.fold_left_map
             (fun (cnt: int) (eq_set: Term.t list) ->
-              let res = List.map (Judge.alpha_equal2 term) eq_set in
+              let res = List.map (Judge.alpha_equal term) eq_set in
               if List.for_all Fun.id res then (* 同じだった *)
                 (cnt + 1, term :: eq_set)
               else if List.for_all not res then (* 違った *)
@@ -63,14 +64,59 @@ let fileloader path =
       List.iteri
         (fun i term ->
           if i > 0 then  printf "\n  ";
-          Term.print term;
-        )
+          Term.print term; )
         (List.rev eq_set);
-      printf " }\n\n";
-    )
+      printf " }\n\n"; )
     (List.rev eq_sets)
+;; *)
+
+let validate_judgements path =
+  let channel = open_in path in
+  let ib = Scanning.from_channel channel in
+  let tbl = Hashtbl.create 100 in
+  let rec input_loop () =
+    let index = bscanf ib "%d " Fun.id in
+    if index = -1 then raise Exit;
+    if Hashtbl.mem tbl index then
+      failwith (sprintf "index %d is already used" index);
+    let find_judge i =
+      match Hashtbl.find_opt tbl i with
+      | Some j -> j
+      | None -> failwith (sprintf "%d: judgemnt %d not found" index i)
+    in
+    let rule = bscanf ib "%s " Fun.id in
+    let judge_opt =
+      match rule with
+      | "sort" ->
+          Some (Judge.Judgement.make_sort ())
+      | "var" ->
+          bscanf ib "%d %s "
+            (fun p v ->
+              Judge.Judgement.make_var (find_judge p) (Named v)
+            )
+      | "weak" ->
+          bscanf ib "%d %d %s "
+            (fun p1 p2 v ->
+              Judge.Judgement.make_weak (find_judge p1) (find_judge p2) (Named v))
+      | "form" ->
+          bscanf ib "%d %d "
+            (fun p1 p2 ->
+              Judge.Judgement.make_form (find_judge p1) (find_judge p2))
+      | _ -> failwith (sprintf "%d: unimplemented rule %s" index rule)
+    in
+    match judge_opt with
+    | None -> failwith (sprintf "%d: invalid judgement" index)
+    | Some judge ->
+        Hashtbl.add tbl index judge;
+        printf "%d:\t" index;
+        Judge.Judgement.print judge;
+        print_newline ();
+        input_loop ()
+  in
+  try input_loop () with Exit -> ()
+;;
 
 let () =
   if Array.length Sys.argv <= 1
     then intaractive ()
-    else fileloader Sys.argv.(1)
+    else validate_judgements Sys.argv.(1)

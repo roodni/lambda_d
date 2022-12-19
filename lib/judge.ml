@@ -10,7 +10,7 @@ let rec assign_var l r term =
   | App (t1, t2) -> App (assign_var l r t1, assign_var l r t2)
   | Lambda (x, ty, bo) | Pai (x, ty, bo) ->
       let x, ty, bo =
-        if x = l then (x, ty, bo)
+        if x = l then (x, assign_var l r ty, bo)
         else if x = r then
           let z = gen_var () in
           (z, assign_var l r ty,

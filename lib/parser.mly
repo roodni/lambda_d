@@ -30,7 +30,7 @@ main:
 
 term:
   | LPAREN t=term RPAREN { t }
-  | ASTER { Kind }
+  | ASTER { Star }
   | AT { Sort }
   | v=VAR { Var v }
   | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN {

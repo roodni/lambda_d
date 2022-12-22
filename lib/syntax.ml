@@ -8,7 +8,7 @@ let string_of_var = function
 
 module Term = struct
   type t =
-    | Kind
+    | Star
     | Sort
     | Var of var
     | App of t * t
@@ -25,7 +25,7 @@ module Term = struct
     let buf = Buffer.create 100 in
     let pf fmt = bprintf buf fmt in
     let rec print_term = function
-      | Kind -> pf "*"
+      | Star -> pf "*"
       | Sort -> pf "@"
       | Var v -> pf "%s" (string_of_var v)
       | App (t1, t2) ->

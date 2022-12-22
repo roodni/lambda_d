@@ -12,7 +12,7 @@ let alpha_equal l r =
   let rec alpha_equal n l_env r_env l r =
     let aeq = alpha_equal n l_env r_env in
     match l, r with
-    | Kind, Kind | Sort, Sort -> true
+    | Star, Star | Sort, Sort -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
     | App (l1, l2), App (r1, r2) -> aeq l1 r1 && aeq l2 r2
     | Lambda (l_x, l_ty, l_bo), Lambda (r_x, r_ty, r_bo) |
@@ -81,7 +81,7 @@ module Judgement = struct
   let make_sort () =
     { definitions = [];
       context = [];
-      proof = Kind;
+      proof = Star;
       prop = Sort;
     }
 
@@ -90,7 +90,7 @@ module Judgement = struct
     | { definitions;
         context;
         proof;
-        prop = Kind | Sort
+        prop = Star | Sort
       }
       when List.assoc_opt var pre.context |> Option.is_none
       -> Some {
@@ -104,7 +104,7 @@ module Judgement = struct
   let make_weak pre1 pre2 var =
     match pre1, pre2 with
     | { definitions=def1; context=ctx1; proof=a; prop=b; },
-      { definitions=def2; context=ctx2; proof=c; prop=Kind | Sort; }
+      { definitions=def2; context=ctx2; proof=c; prop=Star | Sort; }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2
@@ -118,8 +118,8 @@ module Judgement = struct
 
   let make_form pre1 pre2 =
     match pre1, pre2 with
-    | { definitions=def1; context=ctx1; proof=a1; prop=Kind | Sort; },
-      { definitions=def2; context=(x, a2) :: ctx2; proof=b; prop=Kind | Sort as s }
+    | { definitions=def1; context=ctx1; proof=a1; prop=Star | Sort; },
+      { definitions=def2; context=(x, a2) :: ctx2; proof=b; prop=Star | Sort as s }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2 &&

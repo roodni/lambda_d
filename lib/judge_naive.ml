@@ -3,7 +3,7 @@ open Term
 
 let rec assign_var l r term =
   match term with
-  | Kind -> Kind
+  | Star -> Star
   | Sort -> Sort
   | Var v when v = l -> Var r
   | Var v -> Var v
@@ -27,7 +27,7 @@ let rec assign_var l r term =
 
 let rec alpha_equal l r =
   match l, r with
-  | Kind, Kind | Sort, Sort -> true
+  | Star, Star | Sort, Sort -> true
   | Var v1, Var v2 -> v1 = v2
   | App (l1, l2), App (r1, r2) -> alpha_equal l1 r1 && alpha_equal l2 r2
   | Lambda (l_x, l_ty, l_bo), Lambda (r_x, r_ty, r_bo) |

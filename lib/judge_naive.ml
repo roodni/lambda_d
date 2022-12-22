@@ -12,7 +12,7 @@ let rec assign_var l r term =
       let x, ty, bo =
         if x = l then (x, assign_var l r ty, bo)
         else if x = r then
-          let z = gen_var () in
+          let z = Var.gen x in
           (z, assign_var l r ty,
               assign_var l r (assign_var x z bo))
         else (x, assign_var l r ty, assign_var l r bo)
@@ -33,7 +33,7 @@ let rec alpha_equal l r =
   | Lambda (l_x, l_ty, l_bo), Lambda (r_x, r_ty, r_bo) |
     Pai (l_x, l_ty, l_bo), Pai (r_x, r_ty, r_bo) ->
       alpha_equal l_ty r_ty &&
-        (let z = gen_var () in
+        (let z = Var.gen l_x in
           alpha_equal (assign_var l_x z l_bo) (assign_var r_x z r_bo))
   | Const (l_cv, l_tl), Const (r_cv, r_tl) ->
       l_cv = r_cv &&

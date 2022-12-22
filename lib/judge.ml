@@ -28,6 +28,31 @@ let alpha_equal l r =
   alpha_equal 0 [] [] l r
 
 
+let rec assign env term =
+  let ass = assign env in
+  match term with
+  | Star -> Star
+  | Sort -> Sort
+  | Var v -> (
+      match List.assoc_opt v env with
+      | None -> Var v
+      | Some t -> t
+    )
+  | App (t1, t2) -> App (ass t1, ass t2)
+  | Lambda (x, ty, bo) | Pai (x, ty, bo) -> (
+      let z = Var.gen x in
+      let ty' = ass ty in
+      let bo' = ass (assign [(x, Var z)] bo) in
+      match term with
+      | Lambda _ -> Lambda (z, ty', bo')
+      | Pai _ -> Pai (z, ty', bo')
+      | _ -> assert false
+    )
+  | Const (cv, tl) -> Const (cv, List.map ass tl)
+
+let beta_reduction term =
+  assert false
+
 module Definition = struct
   type t = unit
   let equal l r = l = r
@@ -38,7 +63,7 @@ module Definition = struct
 end
 
 module Context = struct
-  type t = (var * Term.t) list
+  type t = (Var.t * Term.t) list
 
   let equal (l: t) (r: t) =
     try List.for_all2
@@ -51,7 +76,7 @@ module Context = struct
     | [] -> printf "0"
     | hd :: tl ->
         let print_elm (v, t) =
-          printf "%s:" (string_of_var v);
+          printf "%s:" (Var.to_string v);
           Term.print t
         in
         List.iter
@@ -129,6 +154,22 @@ module Judgement = struct
           context = ctx1;
           proof = Pai (x, a1, b);
           prop = s
+        }
+    | _ -> None
+
+  let make_appl pre1 pre2 =
+    match pre1, pre2 with
+    | { definitions=def1; context=ctx1; proof=m; prop=Pai (x, a1, b); },
+      { definitions=def2; context=ctx2; proof=n; prop=a2; }
+      when
+        Definition.equal_all def1 def2 &&
+        Context.equal ctx1 ctx2 &&
+        alpha_equal a1 a2
+      -> Some {
+          definitions = def1;
+          context = ctx1;
+          proof = App (m, n);
+          prop = assign [(x, n)] b;
         }
     | _ -> None
 end

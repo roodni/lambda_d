@@ -86,23 +86,24 @@ let validate_judgements path =
     in
     let rule = bscanf ib "%s " Fun.id in
     let judge_opt =
+      let open Judge in
       match rule with
       | "sort" ->
-          Some (Judge.Judgement.make_sort ())
+          Some (Judgement.make_sort ())
       | "var" ->
           bscanf ib "%d %s "
             (fun p v ->
-              Judge.Judgement.make_var (find_judge p) (Named v)
+              Judgement.make_var (find_judge p) (Named v)
             )
       | "weak" ->
           bscanf ib "%d %d %s "
             (fun p1 p2 v ->
-              Judge.Judgement.make_weak (find_judge p1) (find_judge p2) (Named v))
+              Judgement.make_weak (find_judge p1) (find_judge p2) (Named v))
       | "form" ->
           bscanf ib "%d %d "
             (fun p1 p2 ->
-              Judge.Judgement.make_form (find_judge p1) (find_judge p2))
-      | _ -> failwith (sprintf "%d: unimplemented rule %s" index rule)
+              Judgement.make_form (find_judge p1) (find_judge p2))
+      | _ -> failwith (sprintf "%d: unimplemented rule '%s'" index rule)
     in
     match judge_opt with
     | None -> failwith (sprintf "%d: invalid judgement" index)

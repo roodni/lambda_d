@@ -1,25 +1,28 @@
 open Printf
 
-type var = Named of string | Generated of int
+module Var = struct
+  type t = Named of string | Generated of string * int
 
-let string_of_var = function
-  | Named n -> n
-  | Generated i -> sprintf "#%d" i
+  let to_string = function
+    | Named n -> n
+    | Generated (n, i) -> sprintf "%s-%d" n i
+
+  let vari = ref 0
+  let gen v =
+    let Named n | Generated (n, _) = v in
+    incr vari;
+    Generated (n, !vari)
+end
 
 module Term = struct
   type t =
     | Star
     | Sort
-    | Var of var
+    | Var of Var.t
     | App of t * t
-    | Lambda of var * t * t
-    | Pai of var * t * t
+    | Lambda of Var.t * t * t
+    | Pai of Var.t * t * t
     | Const of string * t list
-
-  let vari = ref 0
-  let gen_var () =
-    incr vari;
-    Generated !vari
 
   let to_buf term =
     let buf = Buffer.create 100 in
@@ -27,17 +30,17 @@ module Term = struct
     let rec print_term = function
       | Star -> pf "*"
       | Sort -> pf "@"
-      | Var v -> pf "%s" (string_of_var v)
+      | Var v -> pf "%s" (Var.to_string v)
       | App (t1, t2) ->
           pf "%%("; print_term t1; pf ")("; print_term t2; pf ")"
       | Lambda (v, ty, body) ->
-          pf "$%s:(" (string_of_var v);
+          pf "$%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;
           pf ")"
       | Pai (v, ty, body) ->
-          pf "?%s:(" (string_of_var v);
+          pf "?%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;

@@ -15,7 +15,7 @@ open Term
 %token DOT
 %token COMMA
 
-%token <Syntax.var> VAR
+%token <Syntax.Var.t> VAR
 %token <string> CVAR
 
 %token EOF

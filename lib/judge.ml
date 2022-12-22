@@ -50,18 +50,6 @@ let rec assign env term =
     )
   | Const (cv, tl) -> Const (cv, List.map ass tl)
 
-let beta_reduction term =
-  assert false
-
-module Definition = struct
-  type t = unit
-  let equal l r = l = r
-  let equal_all (l: t list) (r: t list) =
-    try List.for_all2 (fun l r -> equal l r) l r with
-    | Invalid_argument _ -> false
-  let print_all _def = printf "0"
-end
-
 module Context = struct
   type t = (Var.t * Term.t) list
 
@@ -84,6 +72,71 @@ module Context = struct
           (List.rev tl);
         print_elm hd;
 end
+
+module Definition = struct
+  type t = {
+    context: Context.t;
+    name: string;
+    proof: Term.t;
+    prop: Term.t;
+  }
+  let equal l r =
+    Context.equal l.context r.context &&
+    l.name = r.name &&
+    alpha_equal l.proof r.proof &&
+    alpha_equal l.prop r.prop
+
+  let equal_all (l: t list) (r: t list) =
+    try List.for_all2 (fun l r -> equal l r) l r with
+    | Invalid_argument _ -> false
+
+  let print def =
+    Context.print def.context;
+    printf " |> %s(%s) := "
+      def.name
+      (String.concat ","
+        (List.map (fun (x, _) -> Var.to_string x) def.context));
+    Term.print def.proof;
+    printf " : ";
+    Term.print def.prop;
+  ;;
+
+  let print_all = function
+    | [] -> printf "0"
+    | hd :: tl ->
+        List.iter
+          (fun def -> print def; printf ", ";)
+          (List.rev tl);
+        print hd;
+  ;;
+end
+
+let rec normal_form defs term =
+  match term with
+  | Star | Sort | Var _ -> term
+  | App (t1, t2) -> (
+      match normal_form defs t1 with
+      | Lambda (x, _, bo) ->
+          normal_form defs (assign [(x, t2)] bo)
+      | t1 -> App (t1, normal_form defs t2)
+    )
+  | Lambda (x, ty, bo) ->
+      Lambda (x, normal_form defs ty, normal_form defs bo)
+  | Pai (x, ty, bo) ->
+      Pai (x, normal_form defs ty, normal_form defs bo)
+  | Const (name, tl) -> (
+      let def =
+        (* 見つからないことはないと思う *)
+        List.find (fun (def: Definition.t) -> def.name = name) defs
+      in
+      let term =
+        (* 数が合わないことはないと思う *)
+        assign
+          (List.map2 (fun (x, _) t -> (x, t)) def.context tl)
+          def.proof
+      in
+      normal_form defs term
+    )
 
 module Judgement = struct
   type t = {
@@ -170,6 +223,60 @@ module Judgement = struct
           context = ctx1;
           proof = App (m, n);
           prop = assign [(x, n)] b;
+        }
+    | _ -> None
+
+  let make_abst pre1 pre2 =
+    match pre1, pre2 with
+    | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
+      { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Sort }
+      when
+        Definition.equal_all def1 def2 &&
+        Context.equal ctx1 ctx2 &&
+        x1 = x2 &&
+        alpha_equal a1 a2 &&
+        alpha_equal b1 b2
+      -> Some {
+          definitions = def1;
+          context = ctx1;
+          proof = Lambda (x1, a1, m);
+          prop = Pai (x1, a1, b1)
+        }
+    | _ -> None
+
+  let make_conv pre1 pre2 =
+    match pre1, pre2 with
+    | { definitions=def1; context=ctx1; proof=a; prop=b; },
+      { definitions=def2; context=ctx2; proof=b'; prop=Star | Sort; }
+      when
+        Definition.equal_all def1 def2 &&
+        Context.equal ctx1 ctx2;
+      ->
+        let nf1 = normal_form def1 b in
+        let nf2 = normal_form def2 b' in
+        (* printf "  nf1: "; Term.print nf1; printf "\n";
+        printf "  nf2: "; Term.print nf2; printf "\n"; *)
+        if alpha_equal nf1 nf2 then
+          Some {
+            definitions = def1;
+            context = ctx1;
+            proof = a;
+            prop = b';
+          }
+        else None
+    | _ -> None
+
+  let make_def pre1 pre2 name =
+    match pre1, pre2 with
+    | { definitions=def1; context; proof=k; prop=l; },
+      { definitions=def2; context=ctx_def; proof=m; prop=n; }
+      when Definition.equal_all def1 def2 ->
+        Some {
+          definitions =
+            { context=ctx_def; name; proof=m; prop=n } :: def1;
+          context;
+          proof = k;
+          prop = l;
         }
     | _ -> None
 end

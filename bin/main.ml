@@ -103,6 +103,38 @@ let validate_judgements path =
           bscanf ib "%d %d "
             (fun p1 p2 ->
               Judgement.make_form (find_judge p1) (find_judge p2))
+      | "appl" ->
+          bscanf ib "%d %d "
+            (fun p1 p2 ->
+              Judgement.make_appl (find_judge p1) (find_judge p2))
+      | "abst" ->
+          bscanf ib "%d %d "
+            (fun p1 p2 ->
+              Judgement.make_abst (find_judge p1) (find_judge p2))
+      | "conv" ->
+          bscanf ib "%d %d "
+            (fun p1 p2 ->
+              Judgement.make_conv (find_judge p1) (find_judge p2))
+      | "def" ->
+          bscanf ib "%d %d %s "
+            (fun p1 p2 name ->
+              Judgement.make_def (find_judge p1) (find_judge p2) name)
+      | "cp" ->
+          bscanf ib "%d " (fun p -> find_judge p |> Option.some)
+      | "sp" ->
+          bscanf ib "%d %d "
+            (fun p l ->
+              let j = find_judge p in
+              let xl, tl =
+                try List.nth j.context l with
+                | Invalid_argument _ -> failwith (sprintf "%d: invalid l=%d" index l)
+              in
+              Judgement.{
+                definitions = j.definitions;
+                context = j.context;
+                proof = Var xl;
+                prop = tl;
+              } |> Option.some )
       | _ -> failwith (sprintf "%d: unimplemented rule '%s'" index rule)
     in
     match judge_opt with

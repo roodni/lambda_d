@@ -126,7 +126,7 @@ let validate_judgements path =
             (fun p l ->
               let j = find_judge p in
               let xl, tl =
-                try List.nth j.context l with
+                try List.nth (List.rev j.context) l with
                 | Invalid_argument _ -> failwith (sprintf "%d: invalid l=%d" index l)
               in
               Judgement.{

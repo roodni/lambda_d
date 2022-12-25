@@ -77,13 +77,13 @@ module Definition = struct
   type t = {
     context: Context.t;
     name: string;
-    proof: Term.t;
+    proof: Term.t option;
     prop: Term.t;
   }
   let equal l r =
     Context.equal l.context r.context &&
     l.name = r.name &&
-    alpha_equal l.proof r.proof &&
+    Option.equal alpha_equal l.proof r.proof &&
     alpha_equal l.prop r.prop
 
   let equal_all (l: t list) (r: t list) =
@@ -96,7 +96,9 @@ module Definition = struct
       def.name
       (String.concat ","
         (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)));
-    Term.print def.proof;
+    (match def.proof with
+      | None -> printf "#";
+      | Some proof -> Term.print proof );
     printf " : ";
     Term.print def.prop;
   ;;
@@ -136,7 +138,7 @@ let rec normal_form defs term =
         (* 数が合わないことはないと思う *)
         assign
           (List.map2 (fun (x, _) t -> (x, t)) def.context (List.rev tl))
-          def.proof
+          (Option.get def.proof) (* ここ怪しい *)
       in
       normal_form defs term
     )
@@ -276,14 +278,28 @@ module Judgement = struct
       when Definition.equal_all def1 def2 ->
         Some {
           definitions =
-            { context=ctx_def; name; proof=m; prop=n } :: def1;
+            { context=ctx_def; name; proof=Some m; prop=n } :: def1;
           context;
           proof = k;
           prop = l;
         }
     | _ -> None
 
-  let make_inst pre1 pres p =
+  let make_def_prim  pre1 pre2 name =
+    match pre1, pre2 with
+    | { definitions=def1; context; proof=k; prop=l; },
+      { definitions=def2; context=ctx_def; proof=n; prop=Star | Sort; }
+      when Definition.equal_all def1 def2 ->
+        Some {
+          definitions =
+            { context=ctx_def; name; proof=None; prop=n; } :: def1;
+          context;
+          proof = k;
+          prop = l;
+        }
+    | _ -> None
+
+  let make_inst ~prim pre1 pres p =
     match
       let defs, ctx =
         match pre1 with
@@ -291,22 +307,33 @@ module Judgement = struct
         | _ -> raise Exit
       in
       let def = List.nth (List.rev defs) p in
-      let ass =
-        try
-          List.map2
-            (fun (x, _) p -> (x, p.proof))
-            def.context pres
+      (* printf "  def:"; Definition.print def; printf "\n"; *)
+      if prim && Option.is_some def.proof then raise Exit;
+      (* if not prim && Option.is_none def.proof then raise Exit; *)
+      let ctx_and_pres =
+        (* 定義のコンテキストの各バインディング と 前提の判断 の組のリスト *)
+        try List.map2 (fun b p -> (b, p)) def.context (List.rev pres)
         with Invalid_argument _ -> raise Exit (* ここで pres と def.context の要素数が等しいことがわかる *)
       in
-      List.iter2
-        (fun (_, a) p ->
+      let ass =
+        List.map (fun ((x, _), p) -> (x, p.proof)) ctx_and_pres
+      in
+      (* printf "  pre1:"; print pre1; printf "\n"; *)
+      List.iter
+        (fun ((_, a), p) ->
           let cond =
             Definition.equal_all defs p.definitions &&
             Context.equal ctx p.context &&
             alpha_equal p.prop (assign ass a)
           in
+          (* printf "  prei:"; print p; printf "\n";
+          printf "         "; Term.print p.prop; printf "\n";
+          printf "         "; Term.print (assign ass a); printf "\n"; *)
+          (* assert (Definition.equal_all defs p.definitions);
+          assert (Context.equal ctx p.context);
+          assert (alpha_equal p.prop (assign ass a)); *)
           if not cond then raise Exit)
-        def.context pres;
+        ctx_and_pres;
       { definitions = defs;
         context = ctx;
         proof = Const (def.name, List.map (fun p -> p.proof) pres);

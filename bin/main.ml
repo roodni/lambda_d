@@ -119,6 +119,13 @@ let validate_judgements path =
           bscanf ib "%d %d %s "
             (fun p1 p2 name ->
               Judgement.make_def (find_judge p1) (find_judge p2) name)
+      | "inst" ->
+          bscanf ib "%d %d "
+            (fun m n ->
+              let pre1 = find_judge m in
+              let pres = List.init n (fun _ -> bscanf ib "%d " find_judge) in
+              bscanf ib "%d "
+                (fun p -> Judgement.make_inst pre1 pres p) )
       | "cp" ->
           bscanf ib "%d " (fun p -> find_judge p |> Option.some)
       | "sp" ->

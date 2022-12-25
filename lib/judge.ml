@@ -92,16 +92,18 @@ module Definition = struct
 
   let print def =
     Context.print def.context;
-    printf " |> %s(%s) := "
+    printf " > %s(%s):= "
       def.name
       (String.concat ","
-        (List.map (fun (x, _) -> Var.to_string x) def.context));
+        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)));
     Term.print def.proof;
     printf " : ";
     Term.print def.prop;
   ;;
 
-  let print_all = function
+  let print_all l =
+    let print def = printf "("; print def; printf ")"; in
+    match l with
     | [] -> printf "0"
     | hd :: tl ->
         List.iter
@@ -117,6 +119,7 @@ let rec normal_form defs term =
   | App (t1, t2) -> (
       match normal_form defs t1 with
       | Lambda (x, _, bo) ->
+          let t2 = normal_form defs t2 in
           normal_form defs (assign [(x, t2)] bo)
       | t1 -> App (t1, normal_form defs t2)
     )
@@ -132,7 +135,7 @@ let rec normal_form defs term =
       let term =
         (* 数が合わないことはないと思う *)
         assign
-          (List.map2 (fun (x, _) t -> (x, t)) def.context tl)
+          (List.map2 (fun (x, _) t -> (x, t)) def.context (List.rev tl))
           def.proof
       in
       normal_form defs term
@@ -148,7 +151,7 @@ module Judgement = struct
 
   let print judge =
     Definition.print_all judge.definitions;
-    printf " ; ";
+    printf "; ";
     Context.print judge.context;
     printf " |- ";
     Term.print judge.proof;
@@ -279,4 +282,37 @@ module Judgement = struct
           prop = l;
         }
     | _ -> None
+
+  let make_inst pre1 pres p =
+    match
+      let defs, ctx =
+        match pre1 with
+        | { definitions; context; proof=Star; prop=Sort } -> (definitions, context)
+        | _ -> raise Exit
+      in
+      let def = List.nth (List.rev defs) p in
+      let ass =
+        try
+          List.map2
+            (fun (x, _) p -> (x, p.proof))
+            def.context pres
+        with Invalid_argument _ -> raise Exit (* ここで pres と def.context の要素数が等しいことがわかる *)
+      in
+      List.iter2
+        (fun (_, a) p ->
+          let cond =
+            Definition.equal_all defs p.definitions &&
+            Context.equal ctx p.context &&
+            alpha_equal p.prop (assign ass a)
+          in
+          if not cond then raise Exit)
+        def.context pres;
+      { definitions = defs;
+        context = ctx;
+        proof = Const (def.name, List.map (fun p -> p.proof) pres);
+        prop = assign ass def.prop;
+      }
+    with
+    | j -> Some j
+    | exception Exit -> None
 end

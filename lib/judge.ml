@@ -1,7 +1,5 @@
 open Printf
-
 open Syntax
-open Term
 
 let alpha_equal l r =
   let lookup env v =
@@ -12,7 +10,7 @@ let alpha_equal l r =
   let rec alpha_equal n l_env r_env l r =
     let aeq = alpha_equal n l_env r_env in
     match l, r with
-    | Star, Star | Sort, Sort -> true
+    | Term.Star, Term.Star | Sort, Sort -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
     | App (l1, l2), App (r1, r2) -> aeq l1 r1 && aeq l2 r2
     | Lambda (l_x, l_ty, l_bo), Lambda (r_x, r_ty, r_bo) |
@@ -31,7 +29,7 @@ let alpha_equal l r =
 let rec assign env term =
   let ass = assign env in
   match term with
-  | Star -> Star
+  | Term.Star -> Term.Star
   | Sort -> Sort
   | Var v -> (
       match List.assoc_opt v env with
@@ -122,7 +120,7 @@ end
 
 let rec normal_form defs term =
   match term with
-  | Star | Sort | Var _ -> term
+  | Term.Star | Sort | Var _ -> term
   | App (t1, t2) -> (
       match normal_form defs t1 with
       | Lambda (x, _, bo) ->

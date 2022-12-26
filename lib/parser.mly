@@ -25,6 +25,7 @@ open Term
 
 %%
 
+// 授業文法
 main:
   | t=term EOF { t }
 

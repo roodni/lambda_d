@@ -5,7 +5,7 @@ module Var = struct
 
   let to_string = function
     | Named n -> n
-    | Generated (n, i) -> sprintf "%s-%d" n i
+    | Generated (n, i) -> sprintf "%d%s" i n
 
   let vari = ref 0
   let gen v =
@@ -61,5 +61,12 @@ module Term = struct
   let output channel term =
     Buffer.output_buffer channel (to_buf term)
   let print term = output stdout term
+end
 
+module DefLang = struct
+  type elm =
+    | Definition of string * [`Global | `Local] * (Var.t list) * Term.t option * Term.t
+    | Context of (Var.t * Term.t) list * elm list
+  type fig = string * elm list
+  type t = fig list
 end

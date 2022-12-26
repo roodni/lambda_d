@@ -135,17 +135,19 @@ let validate_judgements path =
       | "sp" ->
           bscanf ib "%d %d "
             (fun p l ->
-              let j = find_judge p in
-              let xl, tl =
-                try List.nth (List.rev j.context) l with
-                | Invalid_argument _ -> failwith (sprintf "%d: invalid l=%d" index l)
-              in
-              Judgement.{
-                definitions = j.definitions;
-                context = j.context;
-                proof = Var xl;
-                prop = tl;
-              } |> Option.some )
+              match find_judge p with
+              | { definitions; context; proof=Star; prop=Sort } ->
+                  let xl, tl =
+                    try List.nth (List.rev context) l with
+                    | Invalid_argument _ -> failwith (sprintf "%d: invalid l=%d" index l)
+                  in
+                  Judgement.{
+                    definitions = definitions;
+                    context = context;
+                    proof = Var xl;
+                    prop = tl;
+                  } |> Option.some
+              | _ -> None )
       | _ -> failwith (sprintf "%d: unimplemented rule '%s'" index rule)
     in
     match judge_opt with

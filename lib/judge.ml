@@ -131,16 +131,17 @@ let rec normal_form defs term =
       Pai (x, normal_form defs ty, normal_form defs bo)
   | Const (name, tl) -> (
       let def =
-        (* 見つからないことはないと思う *)
-        List.find (fun (def: Definition.t) -> def.name = name) defs
+        List.find_opt (fun (def: Definition.t) -> def.name = name) defs
       in
-      let term =
-        (* 数が合わないことはないと思う *)
-        assign
-          (List.map2 (fun (x, _) t -> (x, t)) def.context (List.rev tl))
-          (Option.get def.proof) (* ここ怪しい *)
-      in
-      normal_form defs term
+      match def with
+      | None -> failwith (sprintf "definition '%s' not found" name)
+      | Some { proof=Some proof; context; _ } ->
+          let ass =
+            try List.map2 (fun (x, _) t -> (x, t)) context (List.rev tl)
+            with Invalid_argument _ -> failwith (sprintf "definition '%s': arity mismatch" name)
+          in
+          normal_form defs (assign ass proof)
+      | Some { proof=None; _ } -> Const (name, List.map (normal_form defs) tl)
     )
 
 module Judgement = struct

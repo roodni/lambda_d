@@ -90,12 +90,17 @@ module Definition = struct
     try List.for_all2 (fun l r -> equal l r) l r with
     | Invalid_argument _ -> false
 
-  let print def =
-    Context.print def.context;
-    printf " > %s(%s):= "
+  let print_name def =
+    printf "%s[%s]"
       def.name
       (String.concat ","
-        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)));
+        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)))
+
+  let print def =
+    Context.print def.context;
+    printf " |> ";
+    print_name def;
+    printf " := ";
     (match def.proof with
       | None -> printf "#";
       | Some proof -> Term.print proof );
@@ -104,7 +109,7 @@ module Definition = struct
   ;;
 
   let print_all l =
-    let print def = printf "("; print def; printf ")"; in
+    let print def = print_name def; in
     match l with
     | [] -> printf "0"
     | hd :: tl ->

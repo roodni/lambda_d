@@ -157,6 +157,11 @@ let validate_judgements path =
         printf "%d:\t" index;
         Judge.Judgement.print judge;
         print_newline ();
+        if rule = "def" || rule = "defpr" then begin
+          printf " (def)\t";
+          Judge.Definition.print (List.hd judge.definitions);
+          printf "\n";
+        end;
         input_loop ()
   in
   try input_loop () with Exit -> ()

@@ -1,0 +1,58 @@
+open Printf
+
+open Syntax
+open Judge
+
+let rec replace_const f = function
+  | Term.Star -> Term.Star
+  | Sort -> Sort
+  | Var v -> Var v
+  | App (l, r) -> App (replace_const f l, replace_const f r)
+  | Lambda (v, ty, bo) -> Lambda (v, replace_const f ty, replace_const f bo)
+  | Pai (v, ty, bo) -> Pai (v, replace_const f ty, replace_const f bo)
+  | Const (name, l) -> Const (f name, List.map (replace_const f) l)
+
+let figure_to_definitions (figname, elms: figure) =
+  let defs = ref [] in
+  let nametbl = Hashtbl.create 30 in
+  let local_to_global local =
+    Hashtbl.find_opt nametbl local
+    |> Option.value ~default:local
+  in
+  let rec convert ctx = function
+    | Definition (scope, name, vl, proof, prop) ->
+        let global_name = match scope with
+          | `Global -> name
+          | `Local -> sprintf "%s_%s" figname name
+        in
+        Hashtbl.add nametbl name global_name;
+        let defctx =
+          List.rev_map
+            (fun v ->
+              match List.assoc_opt v ctx with
+              | Some t -> (v, t)
+              | None ->
+                  failwith
+                  @@ sprintf "%s: variable '%s' not found"
+                      global_name (Var.to_string v) )
+            vl
+        in
+        let def = Definition.{
+          context = defctx;
+          name = global_name;
+          proof = Option.map (replace_const local_to_global) proof;
+          prop = replace_const local_to_global prop;
+        } in
+        defs := def :: !defs;
+    | Context (bindings, elms) ->
+        let ctx =
+          List.map (fun (v, t) -> (v, replace_const local_to_global t)) bindings
+          @ ctx
+        in
+        convert_elms ctx elms;
+  and convert_elms ctx elms =
+    List.iter (convert ctx) elms
+  in
+  convert_elms [] elms;
+  List.rev !defs
+;;

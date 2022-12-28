@@ -1,4 +1,4 @@
-(executable
- (public_name lambda_d)
- (name main)
+(executables
+ (names main deflang)
+ (public_names lambda_d -)
  (libraries lambda_d))

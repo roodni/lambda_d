@@ -63,10 +63,8 @@ module Term = struct
   let print term = output stdout term
 end
 
-module DefLang = struct
-  type elm =
-    | Definition of string * [`Global | `Local] * (Var.t list) * Term.t option * Term.t
-    | Context of (Var.t * Term.t) list * elm list
-  type fig = string * elm list
-  type t = fig list
-end
+type figure_elm =
+  | Definition of [`Global | `Local] * string * (Var.t list) * Term.t option * Term.t
+  | Context of (Var.t * Term.t) list * figure_elm list
+
+type figure = string * figure_elm list

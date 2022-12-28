@@ -7,13 +7,16 @@ open Term
 %token AT
 %token PERCENT
 %token COLON
+%token EQ DEFEQ
 %token DOLLAR
 %token QUES
-
+%token HASH
 %token LPAREN RPAREN
 %token LBRACKET RBRACKET
+%token LBRACE RBRACE
 %token DOT
 %token COMMA
+%token SEMI
 
 %token <Syntax.Var.t> VAR
 %token <string> CVAR
@@ -22,6 +25,9 @@ open Term
 
 %start main
 %type <Term.t> main
+
+%start deflang
+%type <figure list> deflang
 
 %%
 
@@ -46,3 +52,28 @@ term:
   | cv=CVAR LBRACKET tl=separated_list(COMMA, term) RBRACKET {
       Const (cv, tl)
     }
+
+// Definition記述言語
+deflang:
+  | l=figure* EOF { l }
+
+figure:
+  | n=CVAR LBRACE l=figure_elm* RBRACE { (n, l) }
+
+figure_elm:
+  | n=CVAR LBRACKET vl=separated_list(COMMA, VAR) RBRACKET
+      scope=def proof=proof COLON prop=term SEMI
+    { Definition (scope, n, vl, proof, prop) }
+  | b=separated_list(COMMA, binding) LBRACE l=figure_elm* RBRACE
+    { Context (b, l) }
+
+def:
+  | EQ { `Local }
+  | DEFEQ { `Global }
+
+proof:
+  | t=term { Some t }
+  | HASH { None }
+
+binding:
+  | v=VAR COLON t=term { (v, t) }

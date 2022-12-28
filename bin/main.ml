@@ -8,7 +8,7 @@ let string_to_term s =
   let lexbuf = Lexing.from_string s in
   let term =
     try Parser.main Lexer.main lexbuf with
-    | Parser.Error | Lexer.Error _ -> raise (Invalid_argument s)
+    | Parser.Error | Lexer.Error -> raise (Invalid_argument s)
   in
   term
 ;;

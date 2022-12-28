@@ -20,10 +20,11 @@ let convert path =
       let defs = Deflang.figure_to_definitions fig in
       List.iter
         (fun def ->
-          Judge.Definition.print def;
-          printf "\n"; )
+          Deflang.print_definition def;
+          print_newline (); )
         defs; )
     figures;
+  print_endline "END";
 ;;
 
 let () =

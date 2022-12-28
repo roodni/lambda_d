@@ -31,27 +31,32 @@ open Term
 
 %%
 
-// 授業文法
+
 main:
   | t=term EOF { t }
 
+// 拡張授業文法
 term:
+  | t=term_appable { t }
+  | DOLLAR v=VAR COLON t1=term DOT t2=term
+    { Lambda (v, t1, t2) }
+  | QUES v=VAR COLON t1=term DOT t2=term
+    { Pai (v, t1, t2) }
+
+term_appable:
+  | t=term_simple { t }
+  | l=term_appable r=term_simple { App (l, r) }
+
+term_simple:
   | LPAREN t=term RPAREN { t }
   | ASTER { Star }
   | AT { Sort }
   | v=VAR { Var v }
-  | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN {
-      App (t1, t2)
-    }
-  | DOLLAR v=VAR COLON LPAREN t1=term RPAREN DOT LPAREN t2=term RPAREN {
-      Lambda (v, t1, t2)
-    }
-  | QUES v=VAR COLON LPAREN t1=term RPAREN DOT LPAREN t2=term RPAREN {
-      Pai (v, t1, t2)
-    }
-  | cv=CVAR LBRACKET tl=separated_list(COMMA, term) RBRACKET {
-      Const (cv, tl)
-    }
+  | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN
+    { App (t1, t2) }
+  | cv=CVAR LBRACKET tl=separated_list(COMMA, term) RBRACKET
+    { Const (cv, tl) }
+
 
 // Definition記述言語
 deflang:

@@ -99,9 +99,7 @@ module Definition = struct
     printf " |> ";
     print_name def;
     printf " := ";
-    (match def.proof with
-      | None -> printf "#";
-      | Some proof -> Term.print proof );
+    Term.print_proof def.proof;
     printf " : ";
     Term.print def.prop;
   ;;

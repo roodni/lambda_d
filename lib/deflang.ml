@@ -56,3 +56,22 @@ let figure_to_definitions (figname, elms: figure) =
   convert_elms [] elms;
   List.rev !defs
 ;;
+
+
+let print_definition def =
+  let open Definition in
+  let { context; name; proof; prop; } = def in
+  print_endline "def2";
+  printf "%d\n" (List.length context);
+  List.iter
+    (fun (v, t) ->
+      print_endline (Var.to_string v);
+      Term.print t;
+      print_newline (); )
+    (List.rev context);
+  print_endline name;
+  Term.print_proof proof;
+  print_newline ();
+  Term.print prop;
+  print_newline ();
+  print_endline "edef2"

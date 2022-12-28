@@ -61,6 +61,10 @@ module Term = struct
   let output channel term =
     Buffer.output_buffer channel (to_buf term)
   let print term = output stdout term
+
+  let print_proof = function
+    | None -> print_string "#"
+    | Some t -> print t
 end
 
 type figure_elm =

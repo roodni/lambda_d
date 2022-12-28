@@ -1,0 +1,23 @@
+f11_5 {
+  A: *, B: * {
+    implies[A,B] := ?x:A.B : *;
+    u: ?x:A. B {
+      implies_in[A,B,u] := u : implies[A,B];
+    }
+    u: implies[A,B], v: A {
+      implies_el[A,B,u,v] := u v : B;
+    }
+  }
+}
+
+f11_6 {
+  bottom[] := ?A:*. A : *;
+  A: * {
+    u: A, v: implies[A, bottom[]] {
+      bottom_in[A, u, v] := v u : bottom[];
+    }
+    u: bottom[] {
+      bottom_el[A, u] := u A : A;
+    }
+  }
+}

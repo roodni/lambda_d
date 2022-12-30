@@ -1,3 +1,7 @@
 _build/
+inputs/log.txt
+inputs/mydef.txt
+inputs/out.txt
+
 test_automake3
 test_book3

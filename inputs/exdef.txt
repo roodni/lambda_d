@@ -11,13 +11,192 @@ f11_5 {
 }
 
 f11_6 {
-  bottom[] := ?A:*. A : *;
+  contra[] := ?A:*. A : *;
   A: * {
-    u: A, v: implies[A, bottom[]] {
-      bottom_in[A, u, v] := v u : bottom[];
+    u: A, v: implies[A, contra[]] {
+      contra_in[A, u, v] := v u : contra[];
     }
-    u: bottom[] {
-      bottom_el[A, u] := u A : A;
+    u: contra[] {
+      contra_el[A, u] := u A : A;
+    }
+  }
+}
+
+f11_7 {
+  A: * {
+    not[A] := implies[A, contra[]] : *;
+    u: ?x:A. contra[] {
+      not_in[A,u] := u : not[A];
+    }
+    u: not[A], v: A {
+      not_el[A,u,v] := u v : contra[];
+    }
+  }
+}
+
+f11_8 {
+  A: * {
+    u: A {
+      v: not[A] {
+        a1[A,u,v] = not_el[A,v,u]: contra[];
+      }
+      a2[A,u] = not_in[not[A], $v:not[A]. a1[A,u,v]] : not[not[A]];
+    }
+    a3[A] = implies_in[A, not[not[A]], $u:A. a2[A,u]] : implies[A, not[not[A]]];
+  }
+}
+
+f11_9 {
+  A: * {
+    u: A {
+      a2[A,u] = $v:not[A]. v u : not[not[A]];
+    }
+    a3[A] = $u:A. a2[A,u] : implies[A,not[not[A]]];
+  }
+}
+
+f11_10 {
+  A: *, B: * {
+    and[A, B] := ?C:*. implies[implies[A, implies[B, C]], C] : *;
+    u: A, v: B {
+      and_in[A,B,u,v] := $C:*. $w:implies[A, implies[B,C]]. w u v : and[A,B];
+    }
+    u: and[A,B] {
+      and_el1[A,B,u] := u A ($v:A. $w:B. v): A;
+      and_el2[A,B,u] := u B ($v:A. $w:B. w): B;
+    }
+  }
+}
+
+f11_11 {
+  A: *, B: * {
+    or[A,B] := ?C:*. implies[implies[A,C], implies[implies[B, C], C] ]: *;
+    u: A {
+      or_in1[A,B,u] := $C:*. $v:implies[A,C]. $w:implies[B,C]. v u : or[A,B];
+    }
+    u: B {
+      or_in2[A,B,u] := $C:*. $v:implies[A,C]. $w:implies[B,C]. w u : or[A,B];
+    }
+    C: * {
+      u: or[A,B], v: implies[A,C], w: implies[B,C] {
+        or_el[A,B,C,u,v,w] := u C v w: C;
+      }
+    }
+  }
+}
+
+f11_12 {
+  A:*, B:* {
+    equiv[A,B] := and[implies[A,B], implies[B,A]]: *;
+    u:implies[A,B], v:implies[B,A] {
+      equiv_in[A,B,u,v] := and_in[implies[A,B], implies[B,A], u, v] : equiv[A,B];
+    }
+    u: equiv[A,B] {
+      equiv_el1[A,B,u] := and_el1[implies[A,B], implies[B,A], u] : implies[A, B];
+      equiv_el2[A,B,u] := and_el2[implies[A,B], implies[B,A], u] : implies[B, A];
+    }
+  }
+}
+
+f11_13 {
+  A:*, B:* {
+    x: or[A,B] {
+      y: not[A] {
+        u: A {
+          a1[A,B,x,y,u] = not_el[A,y,u] : contra[];
+          a2[A,B,x,y,u] = contra_el[B, a1[A,B,x,y,u]]: B;
+        }
+        a3[A,B,x,y] = implies_in[A,B, $u:A. a2[A,B,x,y,u]] : implies[A,B];
+        a4[A,B,x,y] = implies_in[B,B, $v:B. v] : implies[B,B];
+        a5[A,B,x,y] = or_el[A,B,B,x, a3[A,B,x,y], a4[A,B,x,y]] : B;
+      }
+      a6[A,B,x] := implies_in[not[A], B, $y:not[A]. a5[A,B,x,y]] : implies[not[A], B];
+    }
+    a7[A,B] = implies_in[or[A,B], implies[not[A], B], $x:or[A,B]. a6[A,B,x]] :
+      implies[or[A,B], implies[not[A], B]];
+  }
+}
+
+f11_14 {
+  A:*, B:* {
+    u: or[A,B] {
+      a1[A,B,u] = $v:A. or_in2[B,A,v] : implies[A,or[B,A]];
+      a2[A,B,u] = $w:B. or_in1[B,A,w] : implies[B,or[B,A]];
+      a3[A,B,u] = u or[B,A] a1[A,B,u] a2[A,B,u] : or[B,A];
+    }
+    sym_or[A,B] := $u:or[A,B]. a3[A,B,u] : implies[or[A,B], or[B,A]];
+  }
+}
+
+f11_16 {
+  A:* {
+    exc_thrd[A] := # : or[A, not[A]];
+    a2[A] = $v:A. v : implies[A,A];
+    u: not[not[A]] {
+      v: not[A] {
+        a3[A,u,v] = u v : contra[];
+        a4[A,u,v] = a3[A,u,v] A : A;
+      }
+      a5[A,u] = $v:not[A]. a4[A,u,v] : implies[not[A], A];
+      a6[A,u] = exc_thrd[A] A a2[A] a5[A,u] : A;
+    }
+    doub_neg[A] := $u:not[not[A]]. a6[A,u] : implies[not[not[A]], A];
+  }
+}
+
+f11_17 {
+  A:* {
+    u: A {
+      v: not[A] {
+        notnot_in[A,u] := $v:not[A]. v u : not[not[A]];
+      }
+      u: not[not[A]] {
+        notnot_el[A,u] := doub_neg[A] u : A;
+      }
+    }
+  }
+}
+
+f11_18 {
+  A: *, B: * {
+    u: implies[not[A], B] {
+      v: not[or[A,B]] {
+        w: A {
+          a1[A,B,w] = or_in1[A,B,w] : or[A,B];
+          a2[A,B,v,w] = v a1[A,B,w] : contra[];
+        }
+        a3[A,B,v] = $w:A. a2[A,B,v,w] : not[A];
+        w: B {
+          a4[A,B,w] = or_in2[A,B,w] : or[A,B];
+          a5[A,B,v,w] = v a4[A,B,w] : contra[];
+        }
+        a6[A,B,u,v] = $w:B. a5[A,B,v,w] : not[B];
+        a7[A,B,u,v] = u a3[A,B,v] : B;
+        a8[A,B,u,v] = a6[A,B,u,v] a7[A,B,u,v]: contra[];
+      }
+      a9[A,B,u] = $v:not[or[A,B]]. a8[A,B,u,v] : not[not[or[A,B]]];
+      a10[A,B,u] = notnot_el[or[A,B], a9[A,B,u]] : or[A,B];
+    }
+    a11[A,B] = $u:implies[not[A],B]. a10[A,B,u] : implies[implies[not[A], B], or[A,B]];
+  }
+}
+
+f11_19 {
+  A: *, B: * {
+    u: implies[not[A], B] {
+      or_in_alt1[A,B,u] := f11_18_a10[A,B,u] : or[A,B];
+    }
+    v: implies[not[B], A] {
+      a2[A,B,v] = or_in_alt1[B,A,v] : or[B,A];
+      or_in_alt2[A,B,v] := f11_14_a3[B,A,a2[A,B,v]] : or[A,B];
+    }
+    u: or[A,B] {
+      v: not[A] {
+        or_el_alt1[A,B,u,v] := f11_13_a5[A,B,u,v] : B;
+      }
+      w: not[B] {
+        or_el_alt2[A,B,u,w] := or_el_alt1[B,A, f11_14_a3[A,B,u], w] : A;
+      }
     }
   }
 }

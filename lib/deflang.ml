@@ -20,22 +20,25 @@ let figure_to_definitions (figname, elms: figure) =
     |> Option.value ~default:local
   in
   let rec convert ctx = function
-    | Definition (scope, name, vl, proof, prop) ->
+    | Definition (scope, name, vl_opt, proof, prop) ->
         let global_name = match scope with
           | `Global -> name
           | `Local -> sprintf "%s_%s" figname name
         in
         Hashtbl.add nametbl name global_name;
         let defctx =
-          List.rev_map
-            (fun v ->
-              match List.assoc_opt v ctx with
-              | Some t -> (v, t)
-              | None ->
-                  failwith
-                  @@ sprintf "%s: variable '%s' not found"
-                      global_name (Var.to_string v) )
-            vl
+          match vl_opt with
+          | None -> ctx
+          | Some vl ->
+            List.rev_map
+              (fun v ->
+                match List.assoc_opt v ctx with
+                | Some t -> (v, t)
+                | None ->
+                    failwith
+                    @@ sprintf "%s: variable '%s' not found"
+                        global_name (Var.to_string v) )
+              vl
         in
         let def = Definition.{
           context = defctx;
@@ -46,7 +49,7 @@ let figure_to_definitions (figname, elms: figure) =
         defs := def :: !defs;
     | Context (bindings, elms) ->
         let ctx =
-          List.map (fun (v, t) -> (v, replace_const local_to_global t)) bindings
+          List.rev_map (fun (v, t) -> (v, replace_const local_to_global t)) bindings
           @ ctx
         in
         convert_elms ctx elms;

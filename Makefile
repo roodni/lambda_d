@@ -16,8 +16,8 @@ run: $(deffile)
 	$(automake) $(deffile) $(P) $(logfile)
 	$(main) $(logfile) > $(outfile)
 
-$(deffile): inputs/exdef.txt
-	$(deflang) inputs/exdef.txt > $@
+$(deffile): inputs/exdef.txt $(deflang)
+	$(deflang) inputs/exdef.txt > $(deffile)
 
 .PHONY: clean
 clean:

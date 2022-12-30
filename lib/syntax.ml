@@ -68,7 +68,7 @@ module Term = struct
 end
 
 type figure_elm =
-  | Definition of [`Global | `Local] * string * (Var.t list) * Term.t option * Term.t
+  | Definition of [`Global | `Local] * string * (Var.t list) option * Term.t option * Term.t
   | Context of (Var.t * Term.t) list * figure_elm list
 
 type figure = string * figure_elm list

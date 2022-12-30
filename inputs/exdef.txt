@@ -200,3 +200,160 @@ f11_19 {
     }
   }
 }
+
+f11_20 {
+  A:*, B:* {
+    u: not[and[A,B]] {
+      v: not[not[A]] {
+        a1 = notnot_el[A,v] : A;
+        w: B {
+          a2 = and_in[A,B, a1[A,B,u,v], w] : and[A,B];
+          a3 = u a2[A,B,u,v,w] : contra[];
+        }
+        a4 = $w:B. a3[A,B,u,v,w] : not[B];
+      }
+      a5[A,B,u] = or_in_alt1[not[A], not[B], $v:not[not[A]]. a4[A,B,u,v]]
+        : or[not[A], not[B]];
+    }
+  }
+}
+
+f11_21 {
+  A:*, B:* {
+    u: or[not[A], not[B]] {
+      v: and[A,B] {
+        a1 = and_el1[A,B,v] : A;
+        a2 = and_el2[A,B,v] : B;
+        a3 = notnot_in[A, a1[A,B,u,v]] : not[not[A]];
+        a4 = or_el_alt1[not[A], not[B], u, a3[A,B,u,v]]: not[B];
+        a5 = a4[A,B,u,v] a2[A,B,u,v] : contra[];
+      }
+      a6[A,B,u] = $v:and[A,B]. a5[A,B,u,v] : not[and[A,B]];
+    }
+  }
+}
+
+f11_22 {
+  S: *, P: (?x:S. *) {
+    forall[S,P] := ?x:S. P x : *;
+    u: ?x:S. P x {
+      forall_in[S,P,u] := u : forall[S,P];
+    }
+    u: forall[S,P], v: S {
+      forall_el[S,P,u,v] := u v : P v;
+    }
+  }
+}
+
+f11_23 {
+  S: *, P: (?x:S. *) {
+    exists[S,P] := ?A:*. forall[S, ($x:S. P x => A)] => A : *;
+    u: S, v: P u {
+      exists_in[S,P,u,v] := $A:*. $w:forall[S, $x:S. P x => A]. w u v
+        : exists[S,P];
+    }
+    u: exists[S,P], A: *, v: forall[S, ($x:S. P x => A)] {
+      exists_el[S,P,u,A,v] := u A v : A;
+    }
+  }
+}
+
+f11_24 {
+  S: *,
+  P: ?x:S.*,
+  Q: ?x:S.* {
+    u: exists[S,P],
+    v: forall[S, $y:S. P y => Q y] {
+      x: S, w: P x {
+        a1 = v x : P x => Q x;
+        a2 = a1[S,P,Q,u,v,x,w] w : Q x;
+        a3 = exists_in[S,Q,x, a2[S,P,Q,u,v,x,w]] : exists[S,Q];
+      }
+      a4 = $x:S. $w:P x. a3[S,P,Q,u,v,x,w]
+        : forall[S, $x:S. P x => exists[S,Q]];
+      a5 = exists_el[S,P,u, exists[S,Q], a4[S,P,Q,u,v]] : exists[S,Q];
+    }
+    a6[S,P,Q] = $u:exists[S,P]. $v:forall[S, $y:S. P y => Q y]. a5[S,P,Q,u,v]
+      : exists[S,P] => forall[S, $y:S. P y => Q y] => exists[S,Q];
+  }
+}
+
+f11_25 {
+  S: *,
+  P: ?x:S.* {
+    u: exists[S, P] {
+      v: forall[S, $y:S. not[P y]] {
+        a1 = exists_el[S,P,u, contra[], v] : contra[];
+      }
+      a2 = $v:forall[S, $y:S.not[P y]]. a1[S,P,u,v]
+        : not[forall[S, $y:S. not[P y]]];
+    }
+    a3[S,P] = $u:exists[S,P]. a2[S,P,u] : exists[S,P] => not[forall[S, $y:S. not[P y]]];
+  }
+}
+
+f11_26 {
+  S: *,
+  P: ?x:S.* {
+    u: not[exists[S,P]] {
+      y: S {
+        v: P y {
+          a1 = exists_in[S,P,y,v] : exists[S,P];
+          a2 = u a1[S,P,u,y,v] : contra[];
+        }
+        a3 = $v:P y. a2[S,P,u,y,v] : not[P y];
+      }
+      a4 = $y:S. a3[S,P,u,y] : forall[S, $y:S. not[P y]];
+    }
+    a5[S,P] = $u:not[exists[S,P]]. a4[S,P,u] : not[exists[S,P]] => forall[S, $y:S. not[P y]];
+  }
+}
+
+f11_27 {
+  S: *,
+  P: ?x:S.* {
+    u: not[forall[S, $x:S. not[P x]]] {
+      v: not[exists[S, P]] {
+        a1 = f11_26_a4[S,P,v] : forall[S, $z:S. not[P z]];
+        a2 = u a1[S,P,u,v] : contra[];
+      }
+      a3 = $v:not[exists[S,P]]. a2[S,P,u,v] : not[not[exists[S,P]]];
+      a4 = notnot_el[exists[S,P], a3[S,P,u]] : exists[S,P];
+    }
+    a5[S,P] = $u:not[forall[S,$x:S.not[P x]]]. a4[S,P,u]
+      : not[forall[S, $x:S. not[P x]]] => exists[S,P];
+  }
+}
+
+f11_28 {
+  S: *,
+  P: ?x:S.* {
+    u: not[forall[S, $x:S. not[P x]]] {
+      exists_in_alt[S,P,u] := f11_27_a4[S,P,u] : exists[S,P];
+    }
+    u: exists[S,P] {
+      exists_el_alt := f11_25_a2[S,P,u] : not[forall[S, $x:S. not[P x]]];
+    }
+  }
+}
+
+f11_29 {
+  S: *,
+  P: ?x:S.* {
+    u: not[forall[S,P]] {
+      v: forall[S, $y:S. not[not[P y]]] {
+        x: S {
+          a1 = v x : not[not[P x]];
+          a2 = notnot_el[P x, a1[S,P,u,v,x]] : P x;
+        }
+        a3 = $x:S. a2[S,P,u,v,x] : forall[S,P];
+        a4 = u a3[S,P,u,v] : contra[];
+      }
+      a5 = $v:forall[S, $y:S. not[not[P y]]]. a4[S,P,u,v]
+        : not[forall[S, $y:S. not[not[P y]]]];
+      a6 = exists_in_alt[S, $y:S. not[P y], a5[S,P,u]]
+        : exists[S, $y:S. not[P y]];
+    }
+    a7[S,P] = $u:not[forall[S,P]]. a6[S,P,u] : not[forall[S,P]] => exists[S, $y:S. not[P y]];
+  }
+}

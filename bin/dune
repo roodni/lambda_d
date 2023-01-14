@@ -1,4 +1,4 @@
 (executables
- (names main deflang)
- (public_names lambda_d -)
+ (names main deflang classify)
+ (public_names lambda_d - -)
  (libraries lambda_d))

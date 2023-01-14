@@ -89,10 +89,12 @@ module Definition = struct
     | Invalid_argument _ -> false
 
   let print_name def =
-    printf "%s[%s]"
+    printf "%s" def.name;
+    (* printf "%s[%s]"
       def.name
       (String.concat ","
-        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)))
+        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context))) *)
+  ;;
 
   let print def =
     Context.print def.context;

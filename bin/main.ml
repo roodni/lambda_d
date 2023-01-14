@@ -69,7 +69,7 @@ let validate_judgements path =
           bscanf ib "%d %d "
             (fun p l ->
               match find_judge p with
-              | { definitions; context; proof=Star; prop=Sort } ->
+              | { definitions; context; proof=Star; prop=Square } ->
                   let xl, tl =
                     try List.nth (List.rev context) l with
                     | Invalid_argument _ -> failwith (sprintf "%d: invalid l=%d" index l)

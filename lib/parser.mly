@@ -54,7 +54,7 @@ term_appable:
 term_simple:
   | LPAREN t=term RPAREN { t }
   | ASTER { Star }
-  | AT { Sort }
+  | AT { Square }
   | v=VAR { Var v }
   | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN
     { App (t1, t2) }

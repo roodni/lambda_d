@@ -10,7 +10,7 @@ let alpha_equal l r =
   let rec alpha_equal n l_env r_env l r =
     let aeq = alpha_equal n l_env r_env in
     match l, r with
-    | Term.Star, Term.Star | Sort, Sort -> true
+    | Term.Star, Term.Star | Square, Square -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
     | App (l1, l2), App (r1, r2) -> aeq l1 r1 && aeq l2 r2
     | Lambda (l_x, l_ty, l_bo), Lambda (r_x, r_ty, r_bo) |
@@ -30,7 +30,7 @@ let rec assign env term =
   let ass = assign env in
   match term with
   | Term.Star -> Term.Star
-  | Sort -> Sort
+  | Square -> Square
   | Var v -> (
       match List.assoc_opt v env with
       | None -> Var v
@@ -120,7 +120,7 @@ end
 
 let rec normal_form defs term =
   match term with
-  | Term.Star | Sort | Var _ -> term
+  | Term.Star | Square | Var _ -> term
   | App (t1, t2) -> (
       match normal_form defs t1 with
       | Lambda (x, _, bo) ->
@@ -169,7 +169,7 @@ module Judgement = struct
     { definitions = [];
       context = [];
       proof = Star;
-      prop = Sort;
+      prop = Square;
     }
 
   let make_var pre var =
@@ -177,7 +177,7 @@ module Judgement = struct
     | { definitions;
         context;
         proof;
-        prop = Star | Sort
+        prop = Star | Square
       }
       when List.assoc_opt var pre.context |> Option.is_none
       -> Some {
@@ -191,7 +191,7 @@ module Judgement = struct
   let make_weak pre1 pre2 var =
     match pre1, pre2 with
     | { definitions=def1; context=ctx1; proof=a; prop=b; },
-      { definitions=def2; context=ctx2; proof=c; prop=Star | Sort; }
+      { definitions=def2; context=ctx2; proof=c; prop=Star | Square; }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2
@@ -205,8 +205,8 @@ module Judgement = struct
 
   let make_form pre1 pre2 =
     match pre1, pre2 with
-    | { definitions=def1; context=ctx1; proof=a1; prop=Star | Sort; },
-      { definitions=def2; context=(x, a2) :: ctx2; proof=b; prop=Star | Sort as s }
+    | { definitions=def1; context=ctx1; proof=a1; prop=Star | Square; },
+      { definitions=def2; context=(x, a2) :: ctx2; proof=b; prop=Star | Square as s }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2 &&
@@ -238,7 +238,7 @@ module Judgement = struct
   let make_abst pre1 pre2 =
     match pre1, pre2 with
     | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
-      { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Sort }
+      { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Square }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2 &&
@@ -256,7 +256,7 @@ module Judgement = struct
   let make_conv pre1 pre2 =
     match pre1, pre2 with
     | { definitions=def1; context=ctx1; proof=a; prop=b; },
-      { definitions=def2; context=ctx2; proof=b'; prop=Star | Sort; }
+      { definitions=def2; context=ctx2; proof=b'; prop=Star | Square; }
       when
         Definition.equal_all def1 def2 &&
         Context.equal ctx1 ctx2;
@@ -292,7 +292,7 @@ module Judgement = struct
   let make_def_prim  pre1 pre2 name =
     match pre1, pre2 with
     | { definitions=def1; context; proof=k; prop=l; },
-      { definitions=def2; context=ctx_def; proof=n; prop=Star | Sort; }
+      { definitions=def2; context=ctx_def; proof=n; prop=Star | Square; }
       when Definition.equal_all def1 def2 ->
         Some {
           definitions =
@@ -307,7 +307,7 @@ module Judgement = struct
     match
       let defs, ctx =
         match pre1 with
-        | { definitions; context; proof=Star; prop=Sort } -> (definitions, context)
+        | { definitions; context; proof=Star; prop=Square } -> (definitions, context)
         | _ -> raise Exit
       in
       let def = List.nth (List.rev defs) p in

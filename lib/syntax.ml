@@ -17,7 +17,7 @@ end
 module Term = struct
   type t =
     | Star
-    | Sort
+    | Square
     | Var of Var.t
     | App of t * t
     | Lambda of Var.t * t * t
@@ -29,7 +29,7 @@ module Term = struct
     let pf fmt = bprintf buf fmt in
     let rec print_term = function
       | Star -> pf "*"
-      | Sort -> pf "@"
+      | Square -> pf "@"
       | Var v -> pf "%s" (Var.to_string v)
       | App (t1, t2) ->
           pf "%%("; print_term t1; pf ")("; print_term t2; pf ")"

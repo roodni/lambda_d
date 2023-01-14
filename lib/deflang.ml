@@ -5,7 +5,7 @@ open Judge
 
 let rec replace_const f = function
   | Term.Star -> Term.Star
-  | Sort -> Sort
+  | Square -> Square
   | Var v -> Var v
   | App (l, r) -> App (replace_const f l, replace_const f r)
   | Lambda (v, ty, bo) -> Lambda (v, replace_const f ty, replace_const f bo)

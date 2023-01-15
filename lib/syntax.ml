@@ -58,6 +58,9 @@ module Term = struct
     print_term term;
     buf
 
+  let to_string term =
+    to_buf term |> Buffer.contents
+
   let output channel term =
     Buffer.output_buffer channel (to_buf term)
   let print term = output stdout term

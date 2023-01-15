@@ -1,6 +1,6 @@
 # usage: make run P=検査する定義の名前
 
-deflang := _build/default/bin/deflang.exe
+deflang := _build/default/bin/exdef.exe
 automake := ./test_automake3
 main := _build/default/bin/main.exe
 
@@ -9,6 +9,12 @@ logfile := inputs/log.txt
 outfile := inputs/out.txt
 
 P := USE_ARG_P
+
+
+.PHONY: run2
+run2:
+	_build/default/bin/script.exe inputs/exdef.txt > $(logfile)
+	$(main) $(logfile) > $(outfile)
 
 
 .PHONY: run

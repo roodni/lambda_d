@@ -38,9 +38,15 @@ let rec assign env term =
     )
   | App (t1, t2) -> App (ass t1, ass t2)
   | Lambda (x, ty, bo) | Pai (x, ty, bo) -> (
-      let z = Var.gen x in
       let ty' = ass ty in
-      let bo' = ass (assign [(x, Var z)] bo) in
+      let env' = List.filter (fun (v, _) -> v <> x) env in
+      let z, bo' =
+        if env' = [] then (x, bo)
+        else
+          let z = Var.gen x in
+          let bo' = assign env' (assign [(x, Var z)] bo) in
+          (z, bo')
+      in
       match term with
       | Lambda _ -> Lambda (z, ty', bo')
       | Pai _ -> Pai (z, ty', bo')
@@ -88,12 +94,17 @@ module Definition = struct
     try List.for_all2 (fun l r -> equal l r) l r with
     | Invalid_argument _ -> false
 
+  let lookup name defs =
+    List.find_opt (fun def -> def.name = name) defs
+  let lookupi name defs =
+    let defs' = List.mapi (fun i d -> (i, d)) (List.rev defs) in
+    List.find_opt (fun (_, def) -> def.name = name) defs'
+
   let print_name def =
-    printf "%s" def.name;
-    (* printf "%s[%s]"
+    printf "%s[%s]"
       def.name
       (String.concat ","
-        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context))) *)
+        (List.map (fun (x, _) -> Var.to_string x) (List.rev def.context)))
   ;;
 
   let print def =
@@ -107,7 +118,7 @@ module Definition = struct
   ;;
 
   let print_all l =
-    let print def = print_name def; in
+    let print def = printf "%s" def.name; in
     match l with
     | [] -> printf "0"
     | hd :: tl ->
@@ -133,9 +144,7 @@ let rec normal_form defs term =
   | Pai (x, ty, bo) ->
       Pai (x, normal_form defs ty, normal_form defs bo)
   | Const (name, tl) -> (
-      let def =
-        List.find_opt (fun (def: Definition.t) -> def.name = name) defs
-      in
+      let def = Definition.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)
       | Some { proof=Some proof; context; _ } ->
@@ -310,7 +319,10 @@ module Judgement = struct
         | { definitions; context; proof=Star; prop=Square } -> (definitions, context)
         | _ -> raise Exit
       in
-      let def = List.nth (List.rev defs) p in
+      let def =
+        try List.nth (List.rev defs) p
+        with Invalid_argument _ -> raise Exit
+      in
       (* printf "  def:"; Definition.print def; printf "\n"; *)
       if prim && Option.is_some def.proof then raise Exit;
       (* if not prim && Option.is_none def.proof then raise Exit; *)

@@ -3,6 +3,7 @@ open Scanf
 
 open Lambda_d
 
+(* 型チェック *)
 let validate_judgements path =
   let channel = open_in path in
   let ib = Scanning.from_channel channel in

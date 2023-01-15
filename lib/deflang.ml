@@ -3,6 +3,15 @@ open Printf
 open Syntax
 open Judge
 
+let load_figures lexbuf =
+  try Parser.deflang Lexer.main lexbuf with
+  | Lexer.Error | Parser.Error ->
+      let Lexing.{ pos_lnum; pos_cnum; pos_bol; _ } = Lexing.lexeme_start_p lexbuf in
+      failwith
+      @@ sprintf "line %d, col %d: parse error"
+          pos_lnum
+          (1 + pos_cnum - pos_bol)
+
 let rec replace_const f = function
   | Term.Star -> Term.Star
   | Square -> Square
@@ -59,7 +68,6 @@ let figure_to_definitions (figname, elms: figure) =
   convert_elms [] elms;
   List.rev !defs
 ;;
-
 
 let print_definition def =
   let open Definition in

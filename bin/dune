@@ -1,4 +1,4 @@
 (executables
- (names main classify exdef script)
+ (names main classify defconv automake)
  (public_names lambda_d - - -)
  (libraries lambda_d))

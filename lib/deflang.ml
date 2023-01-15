@@ -1,4 +1,5 @@
 open Printf
+open Scanf
 
 open Syntax
 open Judge
@@ -69,20 +70,70 @@ let figure_to_definitions (figname, elms: figure) =
   List.rev !defs
 ;;
 
-let print_definition def =
-  let open Definition in
-  let { context; name; proof; prop; } = def in
-  print_endline "def2";
-  printf "%d\n" (List.length context);
-  List.iter
-    (fun (v, t) ->
-      print_endline (Var.to_string v);
-      Term.print t;
-      print_newline (); )
-    (List.rev context);
-  print_endline name;
-  Term.print_proof proof;
-  print_newline ();
-  Term.print prop;
-  print_newline ();
-  print_endline "edef2"
+
+let string_to_term s =
+  let lexbuf = Lexing.from_string s in
+  let term =
+    try Parser.main Lexer.main lexbuf with
+    | Parser.Error | Lexer.Error -> raise (Invalid_argument s)
+  in
+  term
+;;
+
+(* 定義の授業文法 *)
+module Def2 = struct
+  let print def =
+    let open Definition in
+    let { context; name; proof; prop; } = def in
+    print_endline "def2";
+    printf "%d\n" (List.length context);
+    List.iter
+      (fun (v, t) ->
+        print_endline (Var.to_string v);
+        Term.print t;
+        print_newline (); )
+      (List.rev context);
+    print_endline name;
+    Term.print_proof proof;
+    print_newline ();
+    Term.print prop;
+    print_newline ();
+    print_endline "edef2"
+
+  let load channel =
+    let ib = Scanning.from_channel channel in
+    let rec scan_defs defs =
+      let s = bscanf ib "%s " (fun s -> s) in
+      match s with
+      | "END" -> List.rev defs
+      | "def2" ->
+          let n = bscanf ib "%d " (fun n -> n) in
+          let rec scan_ctx n ctx =
+            if n = 0 then ctx
+            else
+              let ctx =
+                bscanf ib "%s %s "
+                  (fun v t -> (Var.Named v, string_to_term t) :: ctx)
+              in
+              scan_ctx (n - 1) ctx
+          in
+          let context = scan_ctx n [] in
+          let def =
+            bscanf ib "%s %s %s %s "
+              (fun name proof prop ed ->
+                assert (ed = "edef2");
+                Definition.{
+                  name;
+                  context;
+                  proof =
+                    if proof = "#" then None
+                    else Some (string_to_term proof);
+                  prop = string_to_term prop;
+                }
+              )
+          in
+          scan_defs (def :: defs)
+      | _ -> failwith "'def2' or 'END' expected"
+    in
+    scan_defs []
+end

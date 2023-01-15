@@ -102,4 +102,8 @@ let validate_judgements path =
 ;;
 
 let () =
-  validate_judgements Sys.argv.(1)
+  match Sys.argv with
+  | [| _; path |]
+  | [| _; _; path |] -> (* 授業配付プログラムとの互換性 *)
+      validate_judgements path
+  | _ -> failwith "引数が違う"

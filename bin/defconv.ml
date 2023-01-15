@@ -10,7 +10,7 @@ let convert path =
       let defs = Deflang.figure_to_definitions fig in
       List.iter
         (fun def ->
-          Deflang.print_definition def;
+          Deflang.Def2.print def;
           print_newline (); )
         defs; )
     figures;

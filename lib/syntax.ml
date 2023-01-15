@@ -5,7 +5,8 @@ module Var = struct
 
   let to_string = function
     | Named n -> n
-    | Generated (n, i) -> sprintf "%d%s" i n
+    (* | Generated (n, i) -> sprintf "%d%s" i n *)
+    | Generated (n, i) -> sprintf "%s%d" n i
 
   let vari = ref 0
   let gen v =

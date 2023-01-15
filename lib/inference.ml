@@ -24,8 +24,13 @@ let rec get_type defs ctx term =
       | _ -> None
     end
   | Lambda (x, a, b) | Pai (x, a, b) -> begin
-      let z = Var.gen x in
-      let b = assign [(x, Var z)] b in
+      let is_x_dup = List.exists (fun (v, _) -> v = x) ctx in
+      let z, b =
+        if not is_x_dup then (x, b)
+        else
+          let z = Var.gen x in
+          (z, assign [(x, Var z)] b)
+      in
       match term with
       | Lambda _ ->
           let* bty = get_type defs ((z, a) :: ctx) b in
@@ -46,9 +51,10 @@ let rec get_type defs ctx term =
     end
 
 
+let cha = ref stdout
 let line = ref 0
 let put_line s =
-  printf "%d %s\n" !line s;
+  fprintf !cha "%d %s\n" !line s;
   incr line;
   !line - 1
 
@@ -85,7 +91,7 @@ let put_script_adding_context ctx (f: var_to_line) x a asc
         in
         (xi, sc) :: dict
       )
-      [] ctx
+      [] (List.rev ctx)
   in
   let xsc =
     put_line @@ sprintf "var %d %s" asc (Var.to_string x)
@@ -228,5 +234,5 @@ let put_script_deriving_definitions deflist =
     )
     ([], sortsc) deflist
   |> ignore;
-  print_endline "-1";
+  fprintf !cha "-1\n"
 ;;

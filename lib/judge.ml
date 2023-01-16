@@ -2,6 +2,7 @@ open Printf
 open Syntax
 
 let alpha_equal l r =
+  l == r ||
   let lookup env v =
     match List.assoc_opt v env with
     | None -> Error v
@@ -168,9 +169,10 @@ module Judgement = struct
   }
 
   let print judge =
-    Definition.print_all judge.definitions;
-    printf "; ";
-    Context.print judge.context;
+    (* Definition.print_all judge.definitions; *)
+    printf "...; ";
+    (* Context.print judge.context; *)
+    printf "...; ";
     printf " |- ";
     Term.print judge.proof;
     printf " : ";

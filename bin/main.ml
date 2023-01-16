@@ -19,6 +19,7 @@ let validate_judgements path =
       | None -> failwith (sprintf "%d: judgemnt %d not found" index i)
     in
     let rule = bscanf ib "%s " Fun.id in
+    eprintf "%d:\t %s\n%!" index rule;
     let judge_opt =
       let open Judge in
       match rule with

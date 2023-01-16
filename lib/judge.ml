@@ -58,6 +58,7 @@ module Context = struct
   type t = (Var.t * Term.t) list
 
   let equal (l: t) (r: t) =
+    l == r ||
     try List.for_all2
       (fun (lv, lt) (rv, rt) ->
         lv = rv && alpha_equal lt rt)
@@ -85,12 +86,14 @@ module Definition = struct
     prop: Term.t;
   }
   let equal l r =
-    Context.equal l.context r.context &&
-    l.name = r.name &&
-    Option.equal alpha_equal l.proof r.proof &&
-    alpha_equal l.prop r.prop
+    l == r ||
+    ( Context.equal l.context r.context &&
+      l.name = r.name &&
+      Option.equal alpha_equal l.proof r.proof &&
+      alpha_equal l.prop r.prop )
 
   let equal_all (l: t list) (r: t list) =
+    l == r ||
     try List.for_all2 (fun l r -> equal l r) l r with
     | Invalid_argument _ -> false
 

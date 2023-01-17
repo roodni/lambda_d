@@ -31,7 +31,11 @@ module Memo = struct
 
   let find_with_prop (tbl: t) ctx proof prop =
     let l = find tbl ctx proof in
-    List.assoc_opt prop l
+    List.find_map
+      (fun (ty, sc) ->
+        if alpha_equal ty prop then Some sc
+        else None )
+      l
 
   let find_any (tbl: t) ctx proof =
     match find tbl ctx proof with
@@ -100,22 +104,24 @@ and put_script memo defs ctx term : Term.t * int =
           end
         | Square -> err "|- @" ()
         | App (m, n) | AppNF (m, n) -> begin
-            let mty, _ = put_script memo defs ctx m in
-            (* eprintf "Trying to get NF: %s\n%!" (Term.to_string mty); *)
-            let mtynf = normal_form defs mty |> Term.delete_nf in
-            (* eprintf "done\n%!"; *)
-            match mtynf with
-            | Pai (x, a, b) | PaiNF (x, a, b) ->
-                let msc' = put_script_with_prop memo defs ctx m mtynf in
-                let nsc = put_script_with_prop memo defs ctx n a in
-                (* eprintf "Trying to assign...%!"; *)
-                let ty = assign [(x, n)] b in
-                (* eprintf "done\n%!"; *)
-                let sc =
-                  put_line @@ sprintf "appl %d %d" msc' nsc
-                in
-                (ty, sc)
-            | _ -> err (sprintf "%s は適用可能な型ではない" (Term.to_string mty)) ()
+            let mty, msc = put_script memo defs ctx m in
+            let x, a, b, msc =
+              match mty with
+              | Pai (x, a, b) -> (x, a, b, msc)
+              | _ -> begin
+                  let mtynf = normal_form defs mty |> Term.delete_nf in
+                  let msc' = put_script_with_prop memo defs ctx m mtynf in
+                  match mtynf with
+                  | Pai (x, a, b) -> (x, a, b, msc')
+                  | _ -> err (sprintf "%s は適用可能な型ではない" (Term.to_string mty)) ()
+                end
+            in
+            let nsc = put_script_with_prop memo defs ctx n a in
+            let ty = assign [(x, n)] b in
+            let sc =
+              put_line @@ sprintf "appl %d %d" msc nsc
+            in
+            (ty, sc)
           end
         | Pai (x, a, b) | PaiNF (x, a, b) ->
             let is_x_dup = List.exists (fun (v, _) -> v = x) ctx in

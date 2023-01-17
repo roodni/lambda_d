@@ -41,15 +41,15 @@ main:
 term:
   | t=term_appable { t }
   | DOLLAR v=VAR COLON t1=term DOT t2=term
-    { Lambda (MaybeNF, v, t1, t2) }
+    { Lambda (v, t1, t2) }
   | QUES v=VAR COLON t1=term DOT t2=term
-    { Pai (MaybeNF, v, t1, t2) }
+    { Pai (v, t1, t2) }
   | l=term_appable DARROW r=term
-    { Const (MaybeNF, "implies", [l; r]) }
+    { Const ("implies", [l; r]) }
 
 term_appable:
   | t=term_simple { t }
-  | l=term_appable r=term_simple { App (MaybeNF, l, r) }
+  | l=term_appable r=term_simple { App (l, r) }
 
 term_simple:
   | LPAREN t=term RPAREN { t }
@@ -57,9 +57,9 @@ term_simple:
   | AT { Square }
   | v=VAR { Var v }
   | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN
-    { App (MaybeNF, t1, t2) }
+    { App (t1, t2) }
   | cv=CVAR LBRACKET tl=separated_list(COMMA, term) RBRACKET
-    { Const (MaybeNF, cv, tl) }
+    { Const (cv, tl) }
 
 
 // Definition記述言語

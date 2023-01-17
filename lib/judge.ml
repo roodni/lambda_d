@@ -13,12 +13,17 @@ let alpha_equal l r =
     match l, r with
     | Term.Star, Term.Star | Square, Square -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
-    | App (_, l1, l2), App (_, r1, r2) -> aeq l1 r1 && aeq l2 r2
-    | Lambda (_, l_x, l_ty, l_bo), Lambda (_, r_x, r_ty, r_bo) |
-      Pai (_, l_x, l_ty, l_bo), Pai (_, r_x, r_ty, r_bo) ->
+    | (App (l1, l2) | AppNF (l1, l2)),
+      (App (r1, r2) | AppNF (r1, r2)) ->
+        aeq l1 r1 && aeq l2 r2
+    | (Lambda (l_x, l_ty, l_bo) | LambdaNF (l_x, l_ty, l_bo)),
+      (Lambda (r_x, r_ty, r_bo) | LambdaNF (r_x, r_ty, r_bo))
+    | (Pai (l_x, l_ty, l_bo) | PaiNF (l_x, l_ty, l_bo)),
+      (Pai (r_x, r_ty, r_bo) | PaiNF (r_x, r_ty, r_bo)) ->
         aeq l_ty r_ty &&
           alpha_equal (n + 1) ((l_x, n) :: l_env) ((r_x, n) :: r_env) l_bo r_bo
-    | Const (_, l_cv, l_tl), Const (_, r_cv, r_tl) ->
+    | (Const (l_cv, l_tl) | ConstNF (l_cv, l_tl)),
+      (Const (r_cv, r_tl) | ConstNF (r_cv, r_tl)) ->
         l_cv = r_cv &&
           (try List.for_all2 aeq l_tl r_tl with
             Invalid_argument _ -> false)
@@ -36,24 +41,27 @@ let assign env term =
     | Var v ->
         ( try VMap.find v env
           with Not_found -> term )
-    | App (_, t1, t2) -> App (MaybeNF, assign env t1, assign env t2)
-    | Lambda (_, x, ty, bo) | Pai (_, x, ty, bo) -> begin
+    | App (t1, t2) | AppNF (t1, t2) ->
+        App (assign env t1, assign env t2)
+    | Lambda (x, ty, bo) | LambdaNF (x, ty, bo)
+    | Pai (x, ty, bo) | PaiNF (x, ty, bo) -> begin
         let ty' = assign env ty in
         let env' = VMap.remove x env in
         if VMap.is_empty env' then
           match term with
-          | Lambda _ -> Lambda (MaybeNF, x, ty', bo)
-          | Pai _ -> Pai (MaybeNF, x, ty', bo)
+          | Lambda _ | LambdaNF _ -> Lambda (x, ty', bo)
+          | Pai _ | PaiNF _ -> Pai (x, ty', bo)
           | _ -> assert false
         else
           let z = Var.gen x in
           let bo' = assign (VMap.add x (Term.Var z) env') bo in
           match term with
-          | Lambda _ -> Lambda (MaybeNF, z, ty', bo')
-          | Pai _ -> Pai (MaybeNF, z, ty', bo')
+          | Lambda _ | LambdaNF _ -> Lambda (z, ty', bo')
+          | Pai _ | PaiNF _ -> Pai (z, ty', bo')
           | _ -> assert false
       end
-    | Const (_, cv, tl) -> Const (MaybeNF, cv, List.map (assign env) tl)
+    | Const (cv, tl) | ConstNF (cv, tl) ->
+        Const (cv, List.map (assign env) tl)
   in
   assign env term
 
@@ -180,23 +188,21 @@ end
 let rec normal_form defs term =
   match term with
   | Term.Star | Square | Var _
-  | App (NF, _, _)
-  | Lambda (NF, _, _, _)
-  | Pai (NF, _, _, _)
-  | Const(NF, _, _)
+  | AppNF ( _, _) | LambdaNF (_, _, _)
+  | PaiNF (_, _, _) | ConstNF (_, _)
       -> term
-  | App (MaybeNF, t1, t2) -> (
+  | App (t1, t2) -> (
       match normal_form defs t1 with
-      | Lambda (_, x, _, bo) ->
+      | Lambda (x, _, bo) | LambdaNF (x, _, bo) ->
           let t2 = normal_form defs t2 in
           normal_form defs (assign [(x, t2)] bo)
-      | t1 -> App (NF, t1, normal_form defs t2)
+      | t1 -> AppNF (t1, normal_form defs t2)
     )
-  | Lambda (MaybeNF, x, ty, bo) ->
-      Lambda (NF, x, normal_form defs ty, normal_form defs bo)
-  | Pai (MaybeNF, x, ty, bo) ->
-      Pai (NF, x, normal_form defs ty, normal_form defs bo)
-  | Const (MaybeNF, name, tl) -> (
+  | Lambda (x, ty, bo) ->
+      LambdaNF (x, normal_form defs ty, normal_form defs bo)
+  | Pai (x, ty, bo) ->
+      PaiNF (x, normal_form defs ty, normal_form defs bo)
+  | Const (name, tl) -> (
       let def = Defs.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)
@@ -218,7 +224,7 @@ let rec normal_form defs term =
             with Invalid_argument _ -> failwith (sprintf "definition '%s': arity mismatch" name)
           in
           normal_form defs (assign ass proofnf)
-      | Some { proof=None; _ } -> Const (NF, name, List.map (normal_form defs) tl)
+      | Some { proof=None; _ } -> ConstNF (name, List.map (normal_form defs) tl)
     )
 
 module Judgement = struct
@@ -289,14 +295,14 @@ module Judgement = struct
       -> Some {
           definitions = def1;
           context = ctx1;
-          proof = Pai (MaybeNF, x, a1, b);
+          proof = Pai (x, a1, b);
           prop = s
         }
     | _ -> None
 
   let make_appl pre1 pre2 =
     match pre1, pre2 with
-    | { definitions=def1; context=ctx1; proof=m; prop=Pai (MaybeNF, x, a1, b); },
+    | { definitions=def1; context=ctx1; proof=m; prop=Pai (x, a1, b); },
       { definitions=def2; context=ctx2; proof=n; prop=a2; }
       when
         Defs.equal def1 def2 &&
@@ -305,7 +311,7 @@ module Judgement = struct
       -> Some {
           definitions = def1;
           context = ctx1;
-          proof = App (MaybeNF, m, n);
+          proof = App (m, n);
           prop = assign [(x, n)] b;
         }
     | _ -> None
@@ -313,7 +319,7 @@ module Judgement = struct
   let make_abst pre1 pre2 =
     match pre1, pre2 with
     | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
-      { definitions=def2; context=ctx2; proof=Pai (MaybeNF, x2, a2, b2); prop=Star | Square }
+      { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Square }
       when
         Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2 &&
@@ -323,8 +329,8 @@ module Judgement = struct
       -> Some {
           definitions = def1;
           context = ctx1;
-          proof = Lambda (MaybeNF, x1, a1, m);
-          prop = Pai (MaybeNF, x1, a1, b1)
+          proof = Lambda (x1, a1, m);
+          prop = Pai (x1, a1, b1)
         }
     | _ -> None
 
@@ -423,7 +429,7 @@ module Judgement = struct
         ctx_and_pres;
       { definitions = defs;
         context = ctx;
-        proof = Const (MaybeNF, def.name, List.map (fun p -> p.proof) pres);
+        proof = Const (def.name, List.map (fun p -> p.proof) pres);
         prop = assign ass def.prop;
       }
     with

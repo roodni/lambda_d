@@ -17,10 +17,14 @@ let rec replace_const f = function
   | Term.Star -> Term.Star
   | Square -> Square
   | Var v -> Var v
-  | App (nf, l, r) -> App (nf, replace_const f l, replace_const f r)
-  | Lambda (nf, v, ty, bo) -> Lambda (nf, v, replace_const f ty, replace_const f bo)
-  | Pai (nf, v, ty, bo) -> Pai (nf, v, replace_const f ty, replace_const f bo)
-  | Const (nf, name, l) -> Const (nf, f name, List.map (replace_const f) l)
+  | App (l, r) | AppNF (l, r) ->
+      App (replace_const f l, replace_const f r)
+  | Lambda (v, ty, bo) | LambdaNF (v, ty, bo) ->
+      Lambda (v, replace_const f ty, replace_const f bo)
+  | Pai (v, ty, bo) | PaiNF (v, ty, bo) ->
+      Pai (v, replace_const f ty, replace_const f bo)
+  | Const (name, l) | ConstNF (name, l) ->
+      Const (f name, List.map (replace_const f) l)
 
 let figure_to_definitions (figname, elms: figure) =
   let defs = ref [] in

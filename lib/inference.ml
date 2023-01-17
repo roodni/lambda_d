@@ -12,7 +12,7 @@ let getopt f = function
 let cha = ref stdout
 let line = ref 0
 let put_line s =
-  fprintf !cha "%d %s\n" !line s;
+  fprintf !cha "%d %s\n%!" !line s;
   incr line;
   !line - 1
 
@@ -59,7 +59,7 @@ let rec put_script_with_prop memo defs ctx proof prop =
 and put_script memo defs ctx term : Term.t * int =
   let err msg () =
     printf "導出に失敗した:\n";
-    Definition.print_all defs;
+    Defs.print defs;
     printf ";\n";
     Context.print ctx;
     printf " |- ";
@@ -70,10 +70,6 @@ and put_script memo defs ctx term : Term.t * int =
   match Memo.find_any memo ctx term with
   | Some sc -> sc
   | None ->
-      if !line = 269338 then begin
-        (* わからない *)
-        eprintf "%s\n%!" (Term.to_string term);
-      end;
       let derived_type, script_line =
         match term with
         | Term.Star -> begin
@@ -112,7 +108,9 @@ and put_script memo defs ctx term : Term.t * int =
             | Pai (x, a, b) ->
                 let msc' = put_script_with_prop memo defs ctx m mtynf in
                 let nsc = put_script_with_prop memo defs ctx n a in
+                (* eprintf "Trying to assign...%!"; *)
                 let ty = assign [(x, n)] b in
+                (* eprintf "done\n%!"; *)
                 let sc =
                   put_line @@ sprintf "appl %d %d" msc' nsc
                 in
@@ -151,7 +149,7 @@ and put_script memo defs ctx term : Term.t * int =
             let sc = put_line @@ sprintf "abst %d %d" msc paisc in
             (pai, sc)
         | Const (name, ul) ->
-            let defi, def = Definition.lookupi name defs |> getopt (err "fail4") in
+            let defi, def = Defs.lookupi name defs |> getopt (err "fail4") in
             let ctx_and_args =
               (* 定義のコンテキストの各バインディング と 実引数 の組のリスト
                 順番は実引数に従う
@@ -167,7 +165,8 @@ and put_script memo defs ctx term : Term.t * int =
               List.map
                 (fun ((_, a), u) ->
                   let ty = assign ass a in
-                  put_script_with_prop memo defs ctx u ty
+                  let sc = put_script_with_prop memo defs ctx u ty in
+                  sc
                 )
                 ctx_and_args
             in
@@ -201,9 +200,9 @@ let put_script_deriving_definitions deflist =
             let sc = put_script_with_prop memo defs def.context proof def.prop in
             put_line @@ sprintf "def %d %d %s" basesc sc def.name
       in
-      (i + 1, def :: defs, defsc)
+      (i + 1, Defs.add def defs, defsc)
     )
-    (1, [], sortsc) deflist
+    (1, Defs.empty, sortsc) deflist
   |> ignore;
   fprintf !cha "-1\n"
 ;;

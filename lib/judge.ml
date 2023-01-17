@@ -28,6 +28,7 @@ let alpha_equal l r =
 
 
 let rec assign env term =
+  if List.length env > 200 then assert false;
   let ass = assign env in
   match term with
   | Term.Star -> Term.Star
@@ -45,7 +46,7 @@ let rec assign env term =
         if env' = [] then (x, bo)
         else
           let z = Var.gen x in
-          let bo' = assign env' (assign [(x, Var z)] bo) in
+          let bo' = assign ((x, Var z) :: env') bo in
           (z, bo')
       in
       match term with
@@ -93,17 +94,6 @@ module Definition = struct
       Option.equal alpha_equal l.proof r.proof &&
       alpha_equal l.prop r.prop )
 
-  let equal_all (l: t list) (r: t list) =
-    l == r ||
-    try List.for_all2 (fun l r -> equal l r) l r with
-    | Invalid_argument _ -> false
-
-  let lookup name defs =
-    List.find_opt (fun def -> def.name = name) defs
-  let lookupi name defs =
-    let defs' = List.mapi (fun i d -> (i, d)) (List.rev defs) in
-    List.find_opt (fun (_, def) -> def.name = name) defs'
-
   let print_name def =
     printf "%s[%s]"
       def.name
@@ -120,17 +110,61 @@ module Definition = struct
     printf " : ";
     Term.print def.prop;
   ;;
+end
 
-  let print_all l =
-    let print def = printf "%s" def.name; in
+module SMap = Map.Make(String)
+
+module Defs = struct
+  type t = int * (int * Definition.t) SMap.t
+
+  let empty : t = (0, SMap.empty)
+
+  let add (def: Definition.t) (n, m: t) : t =
+    let m' = SMap.add def.name (n, def) m in
+    (n + 1, m')
+
+  let lookupi name (_, m: t) =
+    SMap.find_opt name m
+
+  let lookup name defs =
+    lookupi name defs |> Option.map snd
+
+  let nth n (_, m: t) =
+    SMap.to_seq m
+    |> Seq.find_map
+      (fun (_, (i, def)) ->
+        if i = n then Some def else None)
+  let last defs =
+    let n, _ = defs in
+    nth (n - 1) defs |> Option.get
+
+  let equal (ln, lm: t) (rn, rm: t) =
+    lm == rm ||
+    ( ln = rn &&
+      Seq.for_all2
+        (fun (_, (li, ld)) (_, (ri, rd)) ->
+           li = ri && Definition.equal ld rd)
+        (SMap.to_seq lm)
+        (SMap.to_seq rm) )
+
+  let print (_, m: t) =
+    let print_def (def: Definition.t) =
+      printf "%s" def.name
+    in
+    let l =
+      SMap.to_seq m
+      |> List.of_seq
+      |> List.sort (fun (_, (li, _)) (_, (ri, _)) -> Int.compare li ri)
+    in
     match l with
     | [] -> printf "0"
-    | hd :: tl ->
+    | (_, (_, hd)) :: tl ->
+        print_def hd;
         List.iter
-          (fun def -> print def; printf ", ";)
-          (List.rev tl);
-        print hd;
+          (fun (_, (_, def)) -> printf ", "; print_def def;)
+          tl
   ;;
+
 end
 
 let rec normal_form defs term =
@@ -148,7 +182,7 @@ let rec normal_form defs term =
   | Pai (x, ty, bo) ->
       Pai (x, normal_form defs ty, normal_form defs bo)
   | Const (name, tl) -> (
-      let def = Definition.lookup name defs in
+      let def = Defs.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)
       | Some { proof=Some proof; context; _ } ->
@@ -162,7 +196,7 @@ let rec normal_form defs term =
 
 module Judgement = struct
   type t = {
-    definitions: Definition.t list;
+    definitions: Defs.t;
     context: Context.t;
     proof: Term.t;
     prop: Term.t;
@@ -180,7 +214,7 @@ module Judgement = struct
   ;;
 
   let make_sort () =
-    { definitions = [];
+    { definitions = Defs.empty;
       context = [];
       proof = Star;
       prop = Square;
@@ -207,7 +241,7 @@ module Judgement = struct
     | { definitions=def1; context=ctx1; proof=a; prop=b; },
       { definitions=def2; context=ctx2; proof=c; prop=Star | Square; }
       when
-        Definition.equal_all def1 def2 &&
+        Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2
       -> Some {
           definitions = def1;
@@ -222,7 +256,7 @@ module Judgement = struct
     | { definitions=def1; context=ctx1; proof=a1; prop=Star | Square; },
       { definitions=def2; context=(x, a2) :: ctx2; proof=b; prop=Star | Square as s }
       when
-        Definition.equal_all def1 def2 &&
+        Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2 &&
         alpha_equal a1 a2
       -> Some {
@@ -238,7 +272,7 @@ module Judgement = struct
     | { definitions=def1; context=ctx1; proof=m; prop=Pai (x, a1, b); },
       { definitions=def2; context=ctx2; proof=n; prop=a2; }
       when
-        Definition.equal_all def1 def2 &&
+        Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2 &&
         alpha_equal a1 a2
       -> Some {
@@ -254,7 +288,7 @@ module Judgement = struct
     | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
       { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Square }
       when
-        Definition.equal_all def1 def2 &&
+        Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2 &&
         x1 = x2 &&
         alpha_equal a1 a2 &&
@@ -272,7 +306,7 @@ module Judgement = struct
     | { definitions=def1; context=ctx1; proof=a; prop=b; },
       { definitions=def2; context=ctx2; proof=b'; prop=Star | Square; }
       when
-        Definition.equal_all def1 def2 &&
+        Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2;
       ->
         let nf1 = normal_form def1 b in
@@ -293,10 +327,10 @@ module Judgement = struct
     match pre1, pre2 with
     | { definitions=def1; context; proof=k; prop=l; },
       { definitions=def2; context=ctx_def; proof=m; prop=n; }
-      when Definition.equal_all def1 def2 ->
+      when Defs.equal def1 def2 ->
         Some {
           definitions =
-            { context=ctx_def; name; proof=Some m; prop=n } :: def1;
+            Defs.add { context=ctx_def; name; proof=Some m; prop=n } def1;
           context;
           proof = k;
           prop = l;
@@ -307,10 +341,10 @@ module Judgement = struct
     match pre1, pre2 with
     | { definitions=def1; context; proof=k; prop=l; },
       { definitions=def2; context=ctx_def; proof=n; prop=Star | Square; }
-      when Definition.equal_all def1 def2 ->
+      when Defs.equal def1 def2 ->
         Some {
           definitions =
-            { context=ctx_def; name; proof=None; prop=n; } :: def1;
+            Defs.add { context=ctx_def; name; proof=None; prop=n; } def1;
           context;
           proof = k;
           prop = l;
@@ -325,8 +359,9 @@ module Judgement = struct
         | _ -> raise Exit
       in
       let def =
-        try List.nth (List.rev defs) p
-        with Invalid_argument _ -> raise Exit
+        match Defs.nth p defs with
+        | Some def -> def
+        | None -> raise Exit
       in
       (* printf "  def:"; Definition.print def; printf "\n"; *)
       if prim && Option.is_some def.proof then raise Exit;
@@ -343,7 +378,7 @@ module Judgement = struct
       List.iter
         (fun ((_, a), p) ->
           let cond =
-            Definition.equal_all defs p.definitions &&
+            Defs.equal defs p.definitions &&
             Context.equal ctx p.context &&
             alpha_equal p.prop (assign ass a)
           in

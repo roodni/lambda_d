@@ -2,6 +2,7 @@ open Printf
 open Scanf
 
 open Lambda_d
+open Judge
 
 (* 型チェック *)
 let validate_judgements path =
@@ -21,7 +22,6 @@ let validate_judgements path =
     let rule = bscanf ib "%s " Fun.id in
     eprintf "%d:\t %s\n%!" index rule;
     let judge_opt =
-      let open Judge in
       match rule with
       | "sort" ->
           Some (Judgement.make_sort ())
@@ -90,11 +90,11 @@ let validate_judgements path =
     | Some judge ->
         Hashtbl.add tbl index judge;
         printf "%d:\t" index;
-        Judge.Judgement.print judge;
+        Judgement.print judge;
         print_newline ();
         if rule = "def" || rule = "defpr" then begin
           printf " (def)\t";
-          Judge.Definition.print (List.hd judge.definitions);
+          Definition.print (Defs.last judge.definitions);
           printf "\n";
         end;
         input_loop ()

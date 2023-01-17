@@ -13,7 +13,11 @@ module Var = struct
     let Named n | Generated (n, _) = v in
     incr vari;
     Generated (n, !vari)
+
+  let compare = compare
 end
+
+(* module VMap = Map.Make(Var) *)
 
 module Term = struct
   type t =

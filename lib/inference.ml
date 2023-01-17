@@ -102,7 +102,7 @@ and put_script memo defs ctx term : Term.t * int =
         | App (m, n) | AppNF (m, n) -> begin
             let mty, _ = put_script memo defs ctx m in
             (* eprintf "Trying to get NF: %s\n%!" (Term.to_string mty); *)
-            let mtynf = normal_form defs mty in
+            let mtynf = normal_form defs mty |> Term.delete_nf in
             (* eprintf "done\n%!"; *)
             match mtynf with
             | Pai (x, a, b) | PaiNF (x, a, b) ->

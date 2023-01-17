@@ -47,6 +47,18 @@ module Term = struct
     | Const of string * t list
     | ConstNF of string * t list
 
+  let rec delete_nf term =
+    match term with
+    | Star | Square | Var _ -> term
+    | App (t1, t2) | AppNF (t1, t2) ->
+        App (delete_nf t1, delete_nf t2)
+    | Lambda (x, t1, t2) | LambdaNF (x, t1, t2) ->
+        Lambda (x, delete_nf t1, delete_nf t2)
+    | Pai (x, t1, t2) | PaiNF (x, t1, t2) ->
+        Pai (x, delete_nf t1, delete_nf t2)
+    | Const (name, tl) | ConstNF (name, tl) ->
+        Const (name, List.map delete_nf tl)
+
   let to_buf term =
     let buf = Buffer.create 100 in
     let pf fmt = bprintf buf fmt in

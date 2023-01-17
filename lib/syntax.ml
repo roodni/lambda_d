@@ -34,14 +34,16 @@ end
 module VMap = Map.Make(Var)
 
 module Term = struct
+  type nf = NF | MaybeNF
+
   type t =
     | Star
     | Square
     | Var of Var.t
-    | App of t * t
-    | Lambda of Var.t * t * t
-    | Pai of Var.t * t * t
-    | Const of string * t list
+    | App of nf * t * t
+    | Lambda of nf * Var.t * t * t
+    | Pai of nf * Var.t * t * t
+    | Const of nf * string * t list
 
   let to_buf term =
     let buf = Buffer.create 100 in
@@ -50,21 +52,21 @@ module Term = struct
       | Star -> pf "*"
       | Square -> pf "@"
       | Var v -> pf "%s" (Var.to_string v)
-      | App (t1, t2) ->
+      | App (_, t1, t2) ->
           pf "%%("; print_term t1; pf ")("; print_term t2; pf ")"
-      | Lambda (v, ty, body) ->
+      | Lambda (_, v, ty, body) ->
           pf "$%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;
           pf ")"
-      | Pai (v, ty, body) ->
+      | Pai (_, v, ty, body) ->
           pf "?%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;
           pf ")"
-      | Const (name, terms) ->
+      | Const (_, name, terms) ->
           pf "%s[" name;
           List.iteri
             (fun i t ->

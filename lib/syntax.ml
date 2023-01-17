@@ -14,10 +14,24 @@ module Var = struct
     incr vari;
     Generated (n, !vari)
 
-  let compare = compare
+  let compare (l: t) (r: t) =
+    let geti = function
+      | Named _ -> -1
+      | Generated (_, i) -> i
+    in
+    let getn = function
+      | Named n -> n
+      | Generated (n, _) -> n
+    in
+    let li = geti l in
+    let ri = geti r in
+    let res = Int.compare li ri in
+    if res <> 0 || li <> -1 then res
+    else String.compare (getn l) (getn r)
+
 end
 
-(* module VMap = Map.Make(Var) *)
+module VMap = Map.Make(Var)
 
 module Term = struct
   type t =

@@ -27,34 +27,37 @@ let alpha_equal l r =
   alpha_equal 0 [] [] l r
 
 
-let rec assign env term =
-  if List.length env > 200 then assert false;
-  let ass = assign env in
-  match term with
-  | Term.Star -> Term.Star
-  | Square -> Square
-  | Var v -> (
-      match List.assoc_opt v env with
-      | None -> Var v
-      | Some t -> t
-    )
-  | App (t1, t2) -> App (ass t1, ass t2)
-  | Lambda (x, ty, bo) | Pai (x, ty, bo) -> (
-      let ty' = ass ty in
-      let env' = List.filter (fun (v, _) -> v <> x) env in
-      let z, bo' =
-        if env' = [] then (x, bo)
-        else
-          let z = Var.gen x in
-          let bo' = assign ((x, Var z) :: env') bo in
-          (z, bo')
-      in
-      match term with
-      | Lambda _ -> Lambda (z, ty', bo')
-      | Pai _ -> Pai (z, ty', bo')
-      | _ -> assert false
-    )
-  | Const (cv, tl) -> Const (cv, List.map ass tl)
+let assign env term =
+  let env = env |> List.to_seq |> VMap.of_seq in
+  let rec assign env term =
+    let ass = assign env in
+    match term with
+    | Term.Star -> Term.Star
+    | Square -> Square
+    | Var v -> (
+        match VMap.find_opt v env with
+        | None -> Var v
+        | Some t -> t
+      )
+    | App (t1, t2) -> App (ass t1, ass t2)
+    | Lambda (x, ty, bo) | Pai (x, ty, bo) -> (
+        let ty' = ass ty in
+        let env' = VMap.remove x env in
+        let z, bo' =
+          if VMap.is_empty env' then (x, bo)
+          else
+            let z = Var.gen x in
+            let bo' = assign (VMap.add x (Term.Var z) env')  bo in
+            (z, bo')
+        in
+        match term with
+        | Lambda _ -> Lambda (z, ty', bo')
+        | Pai _ -> Pai (z, ty', bo')
+        | _ -> assert false
+      )
+    | Const (cv, tl) -> Const (cv, List.map ass tl)
+  in
+  assign env term
 
 module Context = struct
   type t = (Var.t * Term.t) list

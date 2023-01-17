@@ -30,32 +30,30 @@ let alpha_equal l r =
 let assign env term =
   let env = env |> List.to_seq |> VMap.of_seq in
   let rec assign env term =
-    let ass = assign env in
     match term with
     | Term.Star -> Term.Star
     | Square -> Square
-    | Var v -> (
-        match VMap.find_opt v env with
-        | None -> Var v
-        | Some t -> t
-      )
-    | App (t1, t2) -> App (ass t1, ass t2)
-    | Lambda (x, ty, bo) | Pai (x, ty, bo) -> (
-        let ty' = ass ty in
+    | Var v ->
+        ( try VMap.find v env
+          with Not_found -> term )
+    | App (t1, t2) -> App (assign env t1, assign env t2)
+    | Lambda (x, ty, bo) | Pai (x, ty, bo) -> begin
+        let ty' = assign env ty in
         let env' = VMap.remove x env in
-        let z, bo' =
-          if VMap.is_empty env' then (x, bo)
-          else
-            let z = Var.gen x in
-            let bo' = assign (VMap.add x (Term.Var z) env')  bo in
-            (z, bo')
-        in
-        match term with
-        | Lambda _ -> Lambda (z, ty', bo')
-        | Pai _ -> Pai (z, ty', bo')
-        | _ -> assert false
-      )
-    | Const (cv, tl) -> Const (cv, List.map ass tl)
+        if VMap.is_empty env' then
+          match term with
+          | Lambda _ -> Lambda (x, ty', bo)
+          | Pai _ -> Pai (x, ty', bo)
+          | _ -> assert false
+        else
+          let z = Var.gen x in
+          let bo' = assign (VMap.add x (Term.Var z) env') bo in
+          match term with
+          | Lambda _ -> Lambda (z, ty', bo')
+          | Pai _ -> Pai (z, ty', bo')
+          | _ -> assert false
+      end
+    | Const (cv, tl) -> Const (cv, List.map (assign env) tl)
   in
   assign env term
 
@@ -89,6 +87,7 @@ module Definition = struct
     name: string;
     proof: Term.t option;
     prop: Term.t;
+    mutable proofnf: Term.t option;
   }
   let equal l r =
     l == r ||
@@ -168,6 +167,14 @@ module Defs = struct
           tl
   ;;
 
+  let reportnf (n, m: t) =
+    let memon =
+      SMap.to_seq m
+      |> Seq.filter (fun (_, (_, def)) -> Option.is_some Definition.(def.proofnf))
+      |> Seq.length
+    in
+    eprintf "%d/%d\n" memon n;
+
 end
 
 let rec normal_form defs term =
@@ -188,12 +195,24 @@ let rec normal_form defs term =
       let def = Defs.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)
-      | Some { proof=Some proof; context; _ } ->
+      | Some ({ proof=Some proof; _ } as def) ->
+          let proofnf =
+            match def.proofnf with
+            | Some nf -> nf
+            | None ->
+                let nf = normal_form defs proof in
+                def.proofnf <- Some nf;
+                nf
+          in
           let ass =
-            try List.map2 (fun (x, _) t -> (x, t)) context (List.rev tl)
+            try
+              List.map2
+                (fun (x, _) t -> (x, normal_form defs t))
+                def.context
+                (List.rev tl)
             with Invalid_argument _ -> failwith (sprintf "definition '%s': arity mismatch" name)
           in
-          normal_form defs (assign ass proof)
+          normal_form defs (assign ass proofnf)
       | Some { proof=None; _ } -> Const (name, List.map (normal_form defs) tl)
     )
 
@@ -206,10 +225,10 @@ module Judgement = struct
   }
 
   let print judge =
-    (* Definition.print_all judge.definitions; *)
-    printf "...; ";
-    (* Context.print judge.context; *)
-    printf "...; ";
+    (* Defs.print judge.definitions;
+    printf "; ";
+    Context.print judge.context; *)
+    printf "...";
     printf " |- ";
     Term.print judge.proof;
     printf " : ";
@@ -333,7 +352,9 @@ module Judgement = struct
       when Defs.equal def1 def2 ->
         Some {
           definitions =
-            Defs.add { context=ctx_def; name; proof=Some m; prop=n } def1;
+            Defs.add
+              { context=ctx_def; name; proof=Some m; prop=n; proofnf=None; }
+              def1;
           context;
           proof = k;
           prop = l;
@@ -347,7 +368,9 @@ module Judgement = struct
       when Defs.equal def1 def2 ->
         Some {
           definitions =
-            Defs.add { context=ctx_def; name; proof=None; prop=n; } def1;
+            Defs.add
+              { context=ctx_def; name; proof=None; prop=n; proofnf=None; }
+              def1;
           context;
           proof = k;
           prop = l;

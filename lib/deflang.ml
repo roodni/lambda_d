@@ -55,6 +55,7 @@ let figure_to_definitions (figname, elms: figure) =
           name = global_name;
           proof = Option.map (replace_const local_to_global) proof;
           prop = replace_const local_to_global prop;
+          proofnf = None;
         } in
         defs := def :: !defs;
     | Context (bindings, elms) ->
@@ -84,7 +85,7 @@ let string_to_term s =
 module Def2 = struct
   let print def =
     let open Definition in
-    let { context; name; proof; prop; } = def in
+    let { context; name; proof; prop; _ } = def in
     print_endline "def2";
     printf "%d\n" (List.length context);
     List.iter
@@ -129,6 +130,7 @@ module Def2 = struct
                     if proof = "#" then None
                     else Some (string_to_term proof);
                   prop = string_to_term prop;
+                  proofnf = None;
                 }
               )
           in

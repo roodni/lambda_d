@@ -9,9 +9,11 @@ let validate_judgements path =
   let channel = open_in path in
   let ib = Scanning.from_channel channel in
   let tbl = Hashtbl.create 100 in
+  let lasti = ref (-1) in
   let rec input_loop () =
     let index = bscanf ib "%d " Fun.id in
     if index = -1 then raise Exit;
+    lasti := index;
     if Hashtbl.mem tbl index then
       failwith (sprintf "index %d is already used" index);
     let find_judge i =
@@ -93,13 +95,16 @@ let validate_judgements path =
         Judgement.print judge;
         print_newline ();
         if rule = "def" || rule = "defpr" then begin
+          let def = Defs.last judge.definitions in
           printf " (def)\t";
-          Definition.print (Defs.last judge.definitions);
+          Definition.print def;
           printf "\n";
         end;
         input_loop ()
   in
-  try input_loop () with Exit -> ()
+  try input_loop (); with Exit -> ();
+  let last_judge = Hashtbl.find tbl !lasti in
+  Defs.reportnf last_judge.definitions
 ;;
 
 let () =

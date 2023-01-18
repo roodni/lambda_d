@@ -18,33 +18,35 @@ let put_line s =
 
 
 module Memo = struct
-  type t = (Context.t * Term.t, (Term.t * int) list) Hashtbl.t
+  type t = (Context.t, (Term.t * Term.t * int) list) Hashtbl.t
 
   let create sortsc : t =
     let tbl = Hashtbl.create 100000 in
-    Hashtbl.add tbl ([], Term.Star) [(Term.Square, sortsc)];
+    Hashtbl.add tbl [] [(Term.Star, Term.Square, sortsc)];
     tbl
 
-  let find (tbl: t) ctx proof =
-    try Hashtbl.find tbl (ctx, proof)
+  let find (tbl: t) ctx =
+    try Hashtbl.find tbl ctx
     with Not_found -> []
 
   let find_with_prop (tbl: t) ctx proof prop =
-    let l = find tbl ctx proof in
-    List.find_map
-      (fun (ty, sc) ->
-        if alpha_equal ty prop then Some sc
-        else None )
-      l
+    find tbl ctx
+    |> List.find_map
+      (fun (v, ty, sc) ->
+        if alpha_equal v proof && alpha_equal ty prop
+        then Some sc else None )
 
   let find_any (tbl: t) ctx proof =
-    match find tbl ctx proof with
-    | e :: _ -> Some e
-    | _ -> None
+    find tbl ctx
+    |> List.find_map
+      (fun (v, ty, sc) ->
+        if alpha_equal v proof
+        then Some (ty, sc) else None
+      )
 
   let add tbl ctx proof prop sc =
-    let l = find tbl ctx proof in
-    Hashtbl.add tbl (ctx, proof) ((prop, sc) :: l)
+    let l = find tbl ctx in
+    Hashtbl.add tbl ctx ((proof, prop, sc) :: l)
 end
 
 

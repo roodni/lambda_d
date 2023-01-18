@@ -351,9 +351,10 @@ module Judgement = struct
     | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
       { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Square }
       when
+        let b2 = assign [(x2, Var x1)] b2 in
         Defs.equal def1 def2 &&
         Context.equal ctx1 ctx2 &&
-        x1 = x2 &&
+        (* x1 = x2 && *)
         alpha_equal a1 a2 &&
         alpha_equal b1 b2
       -> Some {

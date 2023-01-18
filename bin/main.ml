@@ -2,6 +2,7 @@ open Printf
 open Scanf
 
 open Lambda_d
+open Syntax
 open Judge
 
 (* 型チェック *)
@@ -30,12 +31,12 @@ let validate_judgements path =
       | "var" ->
           bscanf ib "%d %s "
             (fun p v ->
-              Judgement.make_var (find_judge p) (Named v)
+              Judgement.make_var (find_judge p) (Var.named v)
             )
       | "weak" ->
           bscanf ib "%d %d %s "
             (fun p1 p2 v ->
-              Judgement.make_weak (find_judge p1) (find_judge p2) (Named v))
+              Judgement.make_weak (find_judge p1) (find_judge p2) (Var.named v))
       | "form" ->
           bscanf ib "%d %d "
             (fun p1 p2 ->

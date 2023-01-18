@@ -42,27 +42,23 @@ let assign env term =
         | Lambda _ | LambdaNF _ -> false )
       env
   in
-  let env = env |> List.to_seq |> VMap.of_seq in
-  let rec assign_nf env term =
+  let env = List.to_seq env |> Hashtbl.of_seq in
+  let rec assign_nf term =
     (* ラムダ項でない正規形だけを代入する場合: 正規形フラグを維持する *)
     match term with
     | Term.Star | Square -> term
     | Var v ->
-        ( try VMap.find v env
+        ( try Hashtbl.find env v
           with Not_found -> term )
-    | App (t1, t2) -> App (assign_nf env t1, assign_nf env t2)
-    | AppNF (t1, t2) -> AppNF (assign_nf env t1, assign_nf env t2)
+    | App (t1, t2) -> App (assign_nf t1, assign_nf t2)
+    | AppNF (t1, t2) -> AppNF (assign_nf t1, assign_nf t2)
     | Lambda (x, ty, bo) | LambdaNF (x, ty, bo)
     | Pai (x, ty, bo) | PaiNF (x, ty, bo) -> begin
-        let ty' = assign_nf env ty in
-        let env' = VMap.remove x env in
-        let z, bo' =
-          if VMap.is_empty env' then (x, bo)
-          else
-            let z = Var.gen x in
-            let bo' = assign_nf (VMap.add x (Term.Var z) env') bo in
-            (z, bo')
-        in
+        let ty' = assign_nf ty in
+        let z = Var.gen x in
+        Hashtbl.add env x (Term.Var z);
+        let bo' = assign_nf bo in
+        Hashtbl.remove env x;
         match term with
         | Lambda _ -> Lambda (z, ty', bo')
         | LambdaNF _ -> LambdaNF (z, ty', bo')
@@ -70,38 +66,34 @@ let assign env term =
         | PaiNF _ -> PaiNF (z, ty', bo')
         | _ -> assert false
       end
-    | Const (cv, tl) -> Const (cv, List.map (assign_nf env) tl)
-    | ConstNF (cv, tl) -> ConstNF (cv, List.map (assign_nf env) tl)
+    | Const (cv, tl) -> Const (cv, List.map assign_nf tl)
+    | ConstNF (cv, tl) -> ConstNF (cv, List.map assign_nf tl)
   in
-  let rec assign env term =
+  let rec assign term =
     match term with
     | Term.Star | Square -> term
     | Var v ->
-        ( try VMap.find v env
+        ( try Hashtbl.find env v
           with Not_found -> term )
     | App (t1, t2) | AppNF (t1, t2) ->
-        App (assign env t1, assign env t2)
+        App (assign t1, assign t2)
     | Lambda (x, ty, bo) | LambdaNF (x, ty, bo)
     | Pai (x, ty, bo) | PaiNF (x, ty, bo) -> begin
-        let ty' = assign env ty in
-        let env' = VMap.remove x env in
-        let z, bo' =
-          if VMap.is_empty env' then (x, bo)
-          else
-            let z = Var.gen x in
-            let bo' = assign (VMap.add x (Term.Var z) env') bo in
-            (z, bo')
-        in
+        let ty' = assign ty in
+        let z = Var.gen x in
+        Hashtbl.add env x (Term.Var z);
+        let bo' = assign bo in
+        Hashtbl.remove env x;
         match term with
         | Lambda _ | LambdaNF _ -> Lambda (z, ty', bo')
         | Pai _ | PaiNF _ -> Pai (z, ty', bo')
         | _ -> assert false
       end
     | Const (cv, tl) | ConstNF (cv, tl) ->
-        Const (cv, List.map (assign env) tl)
+        Const (cv, List.map assign tl)
   in
-  if keepnf then assign_nf env term
-  else assign env term
+  if keepnf then assign_nf term
+  else assign term
 
 module Context = struct
   type t = (Var.t * Term.t) list

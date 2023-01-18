@@ -118,7 +118,7 @@ module Def2 = struct
             else
               let ctx =
                 bscanf ib "%s %s "
-                  (fun v t -> (Var.Named v, string_to_term t) :: ctx)
+                  (fun v t -> (Var.named v, string_to_term t) :: ctx)
               in
               scan_ctx (n - 1) ctx
           in

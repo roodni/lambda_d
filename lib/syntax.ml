@@ -1,34 +1,33 @@
 open Printf
 
 module Var = struct
-  type t = Named of string | Generated of string * int
+  type t = int
 
-  let to_string = function
-    | Named n -> n
-    (* | Generated (n, i) -> sprintf "%d%s" i n *)
-    | Generated (n, i) -> sprintf "%s%d" n i
+  let name_to_id: (string, t) Hashtbl.t = Hashtbl.create 100
+  let id_to_name: (t, string) Hashtbl.t = Hashtbl.create 100
 
   let vari = ref 0
-  let gen v =
-    let Named n | Generated (n, _) = v in
+
+  let named s =
+    match Hashtbl.find_opt name_to_id s with
+    | Some i -> i
+    | None ->
+        let v = !vari in
+        incr vari;
+        Hashtbl.add name_to_id s v;
+        Hashtbl.add id_to_name v s;
+        v
+  let gen _v =
+    let v' = !vari in
     incr vari;
-    Generated (n, !vari)
+    v'
 
-  let compare (l: t) (r: t) =
-    let geti = function
-      | Named _ -> -1
-      | Generated (_, i) -> i
-    in
-    let getn = function
-      | Named n -> n
-      | Generated (n, _) -> n
-    in
-    let li = geti l in
-    let ri = geti r in
-    let res = Int.compare li ri in
-    if res <> 0 || li <> -1 then res
-    else String.compare (getn l) (getn r)
+  let to_string v =
+    match Hashtbl.find_opt id_to_name v with
+    | Some s -> s
+    | _ -> sprintf "_%d" v
 
+  let compare = Int.compare
 end
 
 module VMap = Map.Make(Var)

@@ -1,4 +1,5 @@
 {
+open Syntax
 module P = Parser
 
 exception Error
@@ -27,7 +28,7 @@ rule main = parse
   | "," { P.COMMA }
   | ";" { P.SEMI }
   | "=>" { P.DARROW }
-  | ['A'-'Z' 'a'-'z'] { P.VAR (Named (Lexing.lexeme lexbuf)) }
+  | ['A'-'Z' 'a'-'z'] { P.VAR (Var.named (Lexing.lexeme lexbuf)) }
   | ['A'-'Z' 'a'-'z'] ['A'-'Z' 'a'-'z' '0'-'9' '_' '.']+ { P.CVAR (Lexing.lexeme lexbuf) }
   | eof { P.EOF }
   | _ { raise Error }

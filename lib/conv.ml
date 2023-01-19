@@ -262,3 +262,34 @@ let rec normal_form defs term =
           normal_form defs (assign ass proofnf)
       | Some { proof=None; _ } -> ConstNF (name, List.map (normal_form defs) tl)
     )
+
+let rec outermost_reduction defs term =
+  match term with
+  | Term.Star | Square | Var _
+  | Lambda _ | LambdaNF _
+  | Pai _ | PaiNF _ ->
+      term
+  | App (l, r) | AppNF (l, r) -> begin
+      match outermost_reduction defs l with
+      | Lambda (x, _, bo) | LambdaNF (x, _, bo) ->
+          assign [(x, r)] bo
+          |> outermost_reduction defs
+      | _ -> term
+    end
+  | Const (name, tl) | ConstNF (name, tl) -> begin
+      let def = Defs.lookup name defs in
+      match def with
+      | None -> failwith (sprintf "definition '%s' not found" name)
+      | Some { proof=None; _ } -> term
+      | Some ({ proof=Some proof; _ } as def) ->
+          let ass =
+            try
+              List.map2
+                (fun (x, _) t -> (x, t))
+                def.context
+                (List.rev tl)
+            with Invalid_argument _ -> failwith (sprintf "definition '%s': arity mismatch" name)
+          in
+          assign ass proof
+          |> outermost_reduction defs
+    end

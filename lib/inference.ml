@@ -106,24 +106,18 @@ and put_script memo defs ctx term : Term.t * int =
           end
         | Square -> err "|- @" ()
         | App (m, n) | AppNF (m, n) -> begin
-            let mty, msc = put_script memo defs ctx m in
-            let x, a, b, msc =
-              match mty with
-              | Pai (x, a, b) -> (x, a, b, msc)
-              | _ -> begin
-                  let mtynf = normal_form defs mty |> Term.delete_nf in
-                  let msc' = put_script_with_prop memo defs ctx m mtynf in
-                  match mtynf with
-                  | Pai (x, a, b) -> (x, a, b, msc')
-                  | _ -> err (sprintf "%s は適用可能な型ではない" (Term.to_string mty)) ()
-                end
-            in
-            let nsc = put_script_with_prop memo defs ctx n a in
-            let ty = assign [(x, n)] b in
-            let sc =
-              put_line @@ sprintf "appl %d %d" msc nsc
-            in
-            (ty, sc)
+            let mty, _ = put_script memo defs ctx m in
+            let mty' = outermost_reduction defs mty in
+            match mty' with
+            | Pai (x, a, b) ->
+                let msc' = put_script_with_prop memo defs ctx m mty' in
+                let nsc = put_script_with_prop memo defs ctx n a in
+                let ty = assign [(x, n)] b in
+                let sc =
+                  put_line @@ sprintf "appl %d %d" msc' nsc
+                in
+                (ty, sc)
+            | _ -> err (sprintf "%s は適用可能な型ではない" (Term.to_string mty)) ()
           end
         | Pai (x, a, b) | PaiNF (x, a, b) ->
             let is_x_dup = List.exists (fun (v, _) -> v = x) ctx in

@@ -25,7 +25,7 @@ $(deffile): $(exdeffile)
 
 .PHONY: run2
 run2:
-	_build/default/bin/script.exe $(exdeffile) > $(logfile)
+	$(automake) $(exdeffile) > $(logfile)
 	$(main) $(deffile) $(logfile) > $(outfile)
 
 

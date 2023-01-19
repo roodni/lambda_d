@@ -1,4 +1,5 @@
 %{
+open Printf
 open Syntax
 open Term
 %}
@@ -51,6 +52,19 @@ term_appable:
   | t=term_simple { t }
   | l=term_appable r=term_simple { App (l, r) }
 
+cvar:
+  | cv=CVAR { cv }
+  | l=cvar DOT r=CVAR { sprintf "%s.%s" l r }
+
+// cargs:
+//   | t=term { [t] }
+//   | t=term COMMA l=cargs { t :: l }
+//   | t=term DOT l=cargs { t :: l }
+
+csep:
+  | COMMA { () }
+  | DOT { () }
+
 term_simple:
   | LPAREN t=term RPAREN { t }
   | ASTER { Star }
@@ -58,7 +72,7 @@ term_simple:
   | v=VAR { Var v }
   | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN
     { App (t1, t2) }
-  | cv=CVAR LBRACKET tl=separated_list(COMMA, term) RBRACKET
+  | cv=cvar LBRACKET tl=separated_list(csep, term) RBRACKET
     { Const (cv, tl) }
 
 
@@ -67,7 +81,7 @@ deflang:
   | l=figure* EOF { l }
 
 figure:
-  | n=CVAR LBRACE l=figure_elm* RBRACE { (n, l) }
+  | n=cvar LBRACE l=figure_elm* RBRACE { (n, l) }
 
 figure_elm:
   | n=CVAR argdef=argdef scope=def proof=proof COLON prop=term SEMI

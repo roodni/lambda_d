@@ -40,7 +40,7 @@ let classify_term path =
         let cnt, eq_sets =
           List.fold_left_map
             (fun (cnt: int) (eq_set: Term.t list) ->
-              let res = List.map (Judge.alpha_equal term) eq_set in
+              let res = List.map (Conv.alpha_equal term) eq_set in
               if List.for_all Fun.id res then (* 同じだった *)
                 (cnt + 1, term :: eq_set)
               else if List.for_all not res then (* 違った *)

@@ -3,7 +3,7 @@ open Scanf
 
 open Lambda_d
 open Syntax
-open Judge
+open Conv
 
 (* 型チェック *)
 let validate_judgements path =

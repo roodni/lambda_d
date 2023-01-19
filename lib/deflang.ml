@@ -2,7 +2,7 @@ open Printf
 open Scanf
 
 open Syntax
-open Judge
+open Conv
 
 let load_figures lexbuf =
   try Parser.deflang Lexer.main lexbuf with

@@ -1,7 +1,7 @@
 open Printf
 
 open Syntax
-open Judge
+open Conv
 
 let (let*) = Option.bind
 let getopt f = function

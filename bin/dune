@@ -1,4 +1,4 @@
 (executables
- (names main classify defconv automake)
- (public_names lambda_d - - -)
+ (names book classify defconv automake)
+ (public_names bookld - defconvld automakeld)
  (libraries lambda_d))

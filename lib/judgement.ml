@@ -120,11 +120,15 @@ let make_conv pre1 pre2 =
       Defs.equal def1 def2 &&
       Context.equal ctx1 ctx2;
     ->
+      (* eprintf "nf1 %!"; *)
       let nf1 = normal_form def1 b in
+      (* eprintf "nf2 %!"; *)
       let nf2 = normal_form def2 b' in
+      (* eprintf "alpha %!"; *)
       (* printf "  nf1: "; Term.print nf1; printf "\n";
       printf "  nf2: "; Term.print nf2; printf "\n"; *)
       if alpha_equal nf1 nf2 then
+        (* let () = eprintf "done\n%!" in *)
         Some {
           definitions = def1;
           context = ctx1;

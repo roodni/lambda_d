@@ -1,35 +1,49 @@
 open Printf
 open Syntax
 
+let l_env = Hashtbl.create 1000
+let r_env = Hashtbl.create 1000
 let alpha_equal l r =
-  l == r ||
   let lookup env v =
-    match List.assoc_opt v env with
-    | None -> Error v
-    | Some x -> Ok x
+    try Hashtbl.find env v
+    with Not_found -> v
   in
-  let rec alpha_equal n l_env r_env l r =
-    let aeq = alpha_equal n l_env r_env in
+  Hashtbl.clear l_env;
+  Hashtbl.clear r_env;
+  let rec eq n l r =
+    l == r ||
     match l, r with
     | Term.Star, Term.Star | Square, Square -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
     | (App (l1, l2, _) | AppNF (l1, l2, _)),
       (App (r1, r2, _) | AppNF (r1, r2, _)) ->
-        aeq l1 r1 && aeq l2 r2
+        eq n l1 r1 && eq n l2 r2
     | (Lambda (l_x, l_ty, l_bo, _) | LambdaNF (l_x, l_ty, l_bo, _)),
       (Lambda (r_x, r_ty, r_bo, _) | LambdaNF (r_x, r_ty, r_bo, _))
     | (Pai (l_x, l_ty, l_bo, _) | PaiNF (l_x, l_ty, l_bo, _)),
       (Pai (r_x, r_ty, r_bo, _) | PaiNF (r_x, r_ty, r_bo, _)) ->
-        aeq l_ty r_ty &&
-          alpha_equal (n + 1) ((l_x, n) :: l_env) ((r_x, n) :: r_env) l_bo r_bo
+        eq n l_ty r_ty &&
+          (
+            if l_x = r_x &&
+                not (Hashtbl.mem l_env l_x || Hashtbl.mem r_env r_x)
+              then eq n l_bo r_bo
+              else begin
+                Hashtbl.add l_env l_x n;
+                Hashtbl.add r_env r_x n;
+                let res = eq (n - 1) l_bo r_bo in
+                Hashtbl.remove l_env l_x;
+                Hashtbl.remove r_env r_x;
+                res
+              end
+          )
     | (Const (l_cv, l_tl, _) | ConstNF (l_cv, l_tl, _)),
       (Const (r_cv, r_tl, _) | ConstNF (r_cv, r_tl, _)) ->
         l_cv = r_cv &&
-          (try List.for_all2 aeq l_tl r_tl with
+          (try List.for_all2 (eq n) l_tl r_tl with
             Invalid_argument _ -> false)
     | _ -> false
   in
-  alpha_equal 0 [] [] l r
+  eq (-1) l r
 
 
 let assign_tbl = Hashtbl.create 200

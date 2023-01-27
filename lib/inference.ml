@@ -105,11 +105,11 @@ and put_script memo defs ctx term : Term.t * int =
             | [] -> err (sprintf "variable '%s' not found" (Var.to_string v)) ()
           end
         | Square -> err "|- @" ()
-        | App (m, n) | AppNF (m, n) -> begin
+        | App (m, n, _) | AppNF (m, n, _) -> begin
             let mty, _ = put_script memo defs ctx m in
             let mty' = outermost_reduction defs mty in
             match mty' with
-            | Pai (x, a, b) ->
+            | Pai (x, a, b, _) ->
                 let msc' = put_script_with_prop memo defs ctx m mty' in
                 let nsc = put_script_with_prop memo defs ctx n a in
                 let ty = assign [(x, n)] b in
@@ -119,7 +119,7 @@ and put_script memo defs ctx term : Term.t * int =
                 (ty, sc)
             | _ -> err (sprintf "%s は適用可能な型ではない" (Term.to_string mty)) ()
           end
-        | Pai (x, a, b) | PaiNF (x, a, b) ->
+        | Pai (x, a, b, _) | PaiNF (x, a, b, _) ->
             let is_x_dup = List.exists (fun (v, _) -> v = x) ctx in
             let x, b =
               if not is_x_dup then (x, b)
@@ -135,7 +135,7 @@ and put_script memo defs ctx term : Term.t * int =
               put_line @@ sprintf "form %d %d" asc bsc
             in
             (s2, sc)
-        | Lambda (x, a, m) | LambdaNF (x, a, m) ->
+        | Lambda (x, a, m, _) | LambdaNF (x, a, m, _) ->
             let is_x_dup = List.exists (fun (v, _) -> v = x) ctx in
             let x, m =
               if not is_x_dup then (x, m)
@@ -146,11 +146,11 @@ and put_script memo defs ctx term : Term.t * int =
             in
             let ctx' = (x, a) :: ctx in
             let b, msc = put_script memo defs ctx' m in
-            let pai = Term.Pai (x, a, b) in
+            let pai = Term.pai x a b in
             let _, paisc = put_script memo defs ctx pai in
             let sc = put_line @@ sprintf "abst %d %d" msc paisc in
             (pai, sc)
-        | Const (name, ul) | ConstNF (name, ul) ->
+        | Const (name, ul, _) | ConstNF (name, ul, _) ->
             let defi, def = Defs.lookupi name defs |> getopt (err "fail4") in
             let ctx_and_args =
               (* 定義のコンテキストの各バインディング と 実引数 の組のリスト

@@ -70,14 +70,14 @@ let make_form pre1 pre2 =
     -> Some {
         definitions = def1;
         context = ctx1;
-        proof = Pai (x, a1, b);
+        proof = Term.pai x a1 b;
         prop = s
       }
   | _ -> None
 
 let make_appl pre1 pre2 =
   match pre1, pre2 with
-  | { definitions=def1; context=ctx1; proof=m; prop=Pai (x, a1, b); },
+  | { definitions=def1; context=ctx1; proof=m; prop=Pai (x, a1, b, _); },
     { definitions=def2; context=ctx2; proof=n; prop=a2; }
     when
       Defs.equal def1 def2 &&
@@ -86,7 +86,7 @@ let make_appl pre1 pre2 =
     -> Some {
         definitions = def1;
         context = ctx1;
-        proof = App (m, n);
+        proof = Term.app m n;
         prop = assign [(x, n)] b;
       }
   | _ -> None
@@ -94,7 +94,7 @@ let make_appl pre1 pre2 =
 let make_abst pre1 pre2 =
   match pre1, pre2 with
   | { definitions=def1; context=(x1, a1) :: ctx1; proof=m; prop=b1; },
-    { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2); prop=Star | Square }
+    { definitions=def2; context=ctx2; proof=Pai (x2, a2, b2, _); prop=Star | Square }
     when
       let b2 =
         if x1 = x2 then b2 else assign [(x2, Var x1)] b2
@@ -107,8 +107,8 @@ let make_abst pre1 pre2 =
     -> Some {
         definitions = def1;
         context = ctx1;
-        proof = Lambda (x1, a1, m);
-        prop = Pai (x1, a1, b1)
+        proof = Term.lambda x1 a1 m;
+        prop = Term.pai x1 a1 b1
       }
   | _ -> None
 
@@ -207,7 +207,7 @@ let make_inst ~prim pre1 pres p =
       ctx_and_pres;
     { definitions = defs;
       context = ctx;
-      proof = Const (def.name, List.map (fun p -> p.proof) pres);
+      proof = Term.const def.name (List.map (fun p -> p.proof) pres);
       prop = assign ass def.prop;
     }
   with

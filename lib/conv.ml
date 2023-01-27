@@ -13,17 +13,17 @@ let alpha_equal l r =
     match l, r with
     | Term.Star, Term.Star | Square, Square -> true
     | Var l, Var r -> lookup l_env l = lookup r_env r
-    | (App (l1, l2) | AppNF (l1, l2)),
-      (App (r1, r2) | AppNF (r1, r2)) ->
+    | (App (l1, l2, _) | AppNF (l1, l2, _)),
+      (App (r1, r2, _) | AppNF (r1, r2, _)) ->
         aeq l1 r1 && aeq l2 r2
-    | (Lambda (l_x, l_ty, l_bo) | LambdaNF (l_x, l_ty, l_bo)),
-      (Lambda (r_x, r_ty, r_bo) | LambdaNF (r_x, r_ty, r_bo))
-    | (Pai (l_x, l_ty, l_bo) | PaiNF (l_x, l_ty, l_bo)),
-      (Pai (r_x, r_ty, r_bo) | PaiNF (r_x, r_ty, r_bo)) ->
+    | (Lambda (l_x, l_ty, l_bo, _) | LambdaNF (l_x, l_ty, l_bo, _)),
+      (Lambda (r_x, r_ty, r_bo, _) | LambdaNF (r_x, r_ty, r_bo, _))
+    | (Pai (l_x, l_ty, l_bo, _) | PaiNF (l_x, l_ty, l_bo, _)),
+      (Pai (r_x, r_ty, r_bo, _) | PaiNF (r_x, r_ty, r_bo, _)) ->
         aeq l_ty r_ty &&
           alpha_equal (n + 1) ((l_x, n) :: l_env) ((r_x, n) :: r_env) l_bo r_bo
-    | (Const (l_cv, l_tl) | ConstNF (l_cv, l_tl)),
-      (Const (r_cv, r_tl) | ConstNF (r_cv, r_tl)) ->
+    | (Const (l_cv, l_tl, _) | ConstNF (l_cv, l_tl, _)),
+      (Const (r_cv, r_tl, _) | ConstNF (r_cv, r_tl, _)) ->
         l_cv = r_cv &&
           (try List.for_all2 aeq l_tl r_tl with
             Invalid_argument _ -> false)
@@ -34,71 +34,97 @@ let alpha_equal l r =
 
 let assign_tbl = Hashtbl.create 200
 let assign env term =
-  let keepnf =
-    List.for_all
-      (fun (_, term) -> match term with
-        | Term.Star | Square | Var _
-        | AppNF _ | PaiNF _ | ConstNF _ -> true
-        | App _ | Pai _ | Const _
-        | Lambda _ | LambdaNF _ -> false )
-      env
+  let keepnf = function
+    | Term.Star | Square | Var _
+    | AppNF _ | PaiNF _ | ConstNF _ -> true
+    | App _ | Pai _ | Const _
+    | Lambda _ | LambdaNF _ -> false
   in
   let tbl = assign_tbl in
   Hashtbl.clear tbl;
   List.iter
     (fun (x, t) -> Hashtbl.add tbl x t)
     env;
-  let rec assign_nf term =
-    (* ラムダ項でない正規形だけを代入する場合: 正規形フラグを維持する *)
-    match term with
-    | Term.Star | Square -> term
-    | Var v ->
-        ( try Hashtbl.find tbl v
-          with Not_found -> term )
-    | App (t1, t2) -> App (assign_nf t1, assign_nf t2)
-    | AppNF (t1, t2) -> AppNF (assign_nf t1, assign_nf t2)
-    | Lambda (x, ty, bo) | LambdaNF (x, ty, bo)
-    | Pai (x, ty, bo) | PaiNF (x, ty, bo) -> begin
-        let ty' = assign_nf ty in
-        let z = Var.gen x in
-        Hashtbl.add tbl x (Term.Var z);
-        let bo' = assign_nf bo in
-        Hashtbl.remove tbl x;
-        match term with
-        | Lambda _ -> Lambda (z, ty', bo')
-        | LambdaNF _ -> LambdaNF (z, ty', bo')
-        | Pai _ -> Pai (z, ty', bo')
-        | PaiNF _ -> PaiNF (z, ty', bo')
-        | _ -> assert false
-      end
-    | Const (cv, tl) -> Const (cv, List.map assign_nf tl)
-    | ConstNF (cv, tl) -> ConstNF (cv, List.map assign_nf tl)
-  in
   let rec assign term =
+    (* let check_free _ = (true, false) in *)
+    let check_free fvset =
+      let found = ref false in
+      let nf = ref true in
+      VSet.iter
+        (fun fv ->
+          match Hashtbl.find tbl fv with
+          | t ->
+              found := true;
+              if !nf then nf := keepnf t;
+          | exception Not_found -> () )
+        fvset;
+      (!found, !nf)
+    in
     match term with
     | Term.Star | Square -> term
     | Var v ->
         ( try Hashtbl.find tbl v
           with Not_found -> term )
-    | App (t1, t2) | AppNF (t1, t2) ->
-        App (assign t1, assign t2)
-    | Lambda (x, ty, bo) | LambdaNF (x, ty, bo)
-    | Pai (x, ty, bo) | PaiNF (x, ty, bo) -> begin
-        let ty' = assign ty in
-        let z = Var.gen x in
-        Hashtbl.add tbl x (Term.Var z);
-        let bo' = assign bo in
-        Hashtbl.remove tbl x;
-        match term with
-        | Lambda _ | LambdaNF _ -> Lambda (z, ty', bo')
-        | Pai _ | PaiNF _ -> Pai (z, ty', bo')
-        | _ -> assert false
+    | App (t1, t2, free) | AppNF (t1, t2, free) ->
+        let found, nf = check_free free in
+        if found then
+          let nf = match term with
+            | AppNF _ -> nf
+            | _ -> false
+          in
+          Term.app ~nf (assign t1) (assign t2)
+        else term
+    | Lambda (x, ty, bo, free) | LambdaNF (x, ty, bo, free)
+    | Pai (x, ty, bo, free) | PaiNF (x, ty, bo, free) -> begin
+        let found = ref false in
+        let nf = ref true in
+        let xdup = ref false in
+        VSet.iter
+          (fun fv ->
+            match Hashtbl.find tbl fv with
+            | t ->
+                found := true;
+                if !nf then nf := keepnf t;
+                if not !xdup && VSet.mem x (Term.free t)
+                  then xdup := true;
+            | exception Not_found -> () )
+          free;
+        let nf = !nf in
+        if not !found then term
+        else
+          let ty' = assign ty in
+          let xt = Hashtbl.find_opt tbl x in
+          Hashtbl.remove tbl x;
+          let z =
+            if !xdup then
+              let z = Var.gen x in
+              Hashtbl.add tbl x (Term.Var z);
+              z
+            else x
+          in
+          let bo' = assign bo in
+          ( match xt with
+            | Some xt -> Hashtbl.replace tbl x xt
+            | None -> if !xdup then Hashtbl.remove tbl x
+          );
+          match term with
+          | Lambda _ -> Term.lambda z ty' bo'
+          | LambdaNF _ -> Term.lambda ~nf z ty' bo'
+          | Pai _ -> Term.pai z ty' bo'
+          | PaiNF _ -> Term.pai ~nf z ty' bo'
+          | _ -> assert false
       end
-    | Const (cv, tl) | ConstNF (cv, tl) ->
-        Const (cv, List.map assign tl)
+    | Const (cv, tl, free) | ConstNF (cv, tl, free) ->
+        let found, nf = check_free free in
+        if found then
+          let nf = match term with
+            | ConstNF _ -> nf
+            | _ -> false
+          in
+          Term.const ~nf cv (List.map assign tl)
+        else term
   in
-  if keepnf then assign_nf term
-  else assign term
+  assign term
 
 module Context = struct
   type t = (Var.t * Term.t) list
@@ -223,21 +249,21 @@ end
 let rec normal_form defs term =
   match term with
   | Term.Star | Square | Var _
-  | AppNF ( _, _) | LambdaNF (_, _, _)
-  | PaiNF (_, _, _) | ConstNF (_, _)
+  | AppNF _ | LambdaNF _
+  | PaiNF _ | ConstNF _
       -> term
-  | App (t1, t2) -> (
+  | App (t1, t2, _) -> (
       match normal_form defs t1 with
-      | Lambda (x, _, bo) | LambdaNF (x, _, bo) ->
+      | Lambda (x, _, bo, _) | LambdaNF (x, _, bo, _) ->
           let t2 = normal_form defs t2 in
           normal_form defs (assign [(x, t2)] bo)
-      | t1 -> AppNF (t1, normal_form defs t2)
+      | t1 -> Term.app ~nf:true t1 (normal_form defs t2)
     )
-  | Lambda (x, ty, bo) ->
-      LambdaNF (x, normal_form defs ty, normal_form defs bo)
-  | Pai (x, ty, bo) ->
-      PaiNF (x, normal_form defs ty, normal_form defs bo)
-  | Const (name, tl) -> (
+  | Lambda (x, ty, bo, _) ->
+      Term.lambda ~nf:true x (normal_form defs ty) (normal_form defs bo)
+  | Pai (x, ty, bo, _) ->
+      Term.pai ~nf:true x (normal_form defs ty) (normal_form defs bo)
+  | Const (name, tl, _) -> (
       let def = Defs.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)
@@ -260,7 +286,7 @@ let rec normal_form defs term =
             with Invalid_argument _ -> failwith (sprintf "definition '%s': arity mismatch" name)
           in
           normal_form defs (assign ass proofnf)
-      | Some { proof=None; _ } -> ConstNF (name, List.map (normal_form defs) tl)
+      | Some { proof=None; _ } -> Term.const ~nf:true name (List.map (normal_form defs) tl)
     )
 
 let rec outermost_reduction defs term =
@@ -269,14 +295,14 @@ let rec outermost_reduction defs term =
   | Lambda _ | LambdaNF _
   | Pai _ | PaiNF _ ->
       term
-  | App (l, r) | AppNF (l, r) -> begin
+  | App (l, r, _) | AppNF (l, r, _) -> begin
       match outermost_reduction defs l with
-      | Lambda (x, _, bo) | LambdaNF (x, _, bo) ->
+      | Lambda (x, _, bo, _) | LambdaNF (x, _, bo, _) ->
           assign [(x, r)] bo
           |> outermost_reduction defs
       | _ -> term
     end
-  | Const (name, tl) | ConstNF (name, tl) -> begin
+  | Const (name, tl, _) | ConstNF (name, tl, _) -> begin
       let def = Defs.lookup name defs in
       match def with
       | None -> failwith (sprintf "definition '%s' not found" name)

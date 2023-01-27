@@ -42,15 +42,15 @@ main:
 term:
   | t=term_appable { t }
   | DOLLAR v=VAR COLON t1=term DOT t2=term
-    { Lambda (v, t1, t2) }
+    { lambda v t1 t2 }
   | QUES v=VAR COLON t1=term DOT t2=term
-    { Pai (v, t1, t2) }
+    { pai v t1 t2 }
   | l=term_appable DARROW r=term
-    { Const ("implies", [l; r]) }
+    { const "implies" [l; r] }
 
 term_appable:
   | t=term_simple { t }
-  | l=term_appable r=term_simple { App (l, r) }
+  | l=term_appable r=term_simple { app l r }
 
 cvar:
   | cv=CVAR { cv }
@@ -71,9 +71,9 @@ term_simple:
   | AT { Square }
   | v=VAR { Var v }
   | PERCENT LPAREN t1=term RPAREN LPAREN t2=term RPAREN
-    { App (t1, t2) }
+    { app t1 t2 }
   | cv=cvar LBRACKET tl=separated_list(csep, term) RBRACKET
-    { Const (cv, tl) }
+    { const cv tl }
 
 
 // Definition記述言語

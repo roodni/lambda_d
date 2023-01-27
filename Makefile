@@ -3,7 +3,7 @@
 deflang := _build/default/bin/defconv.exe
 automake := _build/default/bin/automake.exe
 # automake := ./test_automake3
-main := _build/default/bin/main.exe
+main := _build/default/bin/book.exe
 # main := ./test_book3
 
 exdeffile := inputs/exdef.txt

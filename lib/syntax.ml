@@ -30,21 +30,56 @@ module Var = struct
   let compare = Int.compare
 end
 
-module VMap = Map.Make(Var)
+module VSet = Set.Make(Var)
 
 module Term = struct
   type t =
     | Star
     | Square
     | Var of Var.t
-    | App of t * t
-    | AppNF of t * t
-    | Lambda of Var.t * t * t
-    | LambdaNF of Var.t * t * t
-    | Pai of Var.t * t * t
-    | PaiNF of Var.t * t * t
-    | Const of string * t list
-    | ConstNF of string * t list
+    | App of t * t * VSet.t
+    | AppNF of t * t * VSet.t
+    | Lambda of Var.t * t * t * VSet.t
+    | LambdaNF of Var.t * t * t * VSet.t
+    | Pai of Var.t * t * t * VSet.t
+    | PaiNF of Var.t * t * t * VSet.t
+    | Const of string * t list * VSet.t
+    | ConstNF of string * t list * VSet.t
+
+  let free = function
+    | Star | Square -> VSet.empty
+    | Var x -> VSet.singleton x
+    | App (_, _, s) | Const (_, _, s)
+    | Lambda (_, _, _, s) | Pai (_, _, _, s)
+    | AppNF (_, _, s) | ConstNF (_, _, s)
+    | LambdaNF (_, _, _, s) | PaiNF (_, _, _, s) -> s
+  let add_free t set =
+    match t with
+    | Star | Square -> set
+    | Var x -> VSet.add x set
+    | _ -> VSet.union (free t) set
+
+  let app ?(nf=false) l r =
+    let s = free l |> add_free r in
+    if nf then AppNF (l, r, s)
+      else App (l, r, s)
+  let lambda ?(nf=false) v ty bo =
+    let s = free bo |> VSet.remove v |> add_free ty in
+    if nf then LambdaNF (v, ty, bo, s)
+      else Lambda (v, ty, bo, s)
+  let pai ?(nf=false) v ty bo =
+    let s = free bo |> VSet.remove v |> add_free ty in
+    if nf then PaiNF (v, ty, bo, s)
+      else Pai (v, ty, bo, s)
+  let const ?(nf=false) name tl =
+    let s = match tl with
+      | [] -> VSet.empty
+      | [t] -> free t
+      | h :: rest ->
+          List.fold_left (fun s t -> add_free t s) (free h) rest
+    in
+    if nf then ConstNF (name, tl, s)
+      else Const (name, tl, s)
 
   let to_buf term =
     let buf = Buffer.create 100 in
@@ -53,21 +88,21 @@ module Term = struct
       | Star -> pf "*"
       | Square -> pf "@"
       | Var v -> pf "%s" (Var.to_string v)
-      | App (t1, t2) | AppNF(t1, t2) ->
+      | App (t1, t2, _) | AppNF(t1, t2, _) ->
           pf "%%("; print_term t1; pf ")("; print_term t2; pf ")"
-      | Lambda (v, ty, body) | LambdaNF (v, ty, body) ->
+      | Lambda (v, ty, body, _) | LambdaNF (v, ty, body, _) ->
           pf "$%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;
           pf ")"
-      | Pai (v, ty, body) | PaiNF(v, ty, body) ->
+      | Pai (v, ty, body, _) | PaiNF(v, ty, body, _) ->
           pf "?%s:(" (Var.to_string v);
           print_term ty;
           pf ").(";
           print_term body;
           pf ")"
-      | Const (name, terms) | ConstNF (name, terms) ->
+      | Const (name, terms, _) | ConstNF (name, terms, _) ->
           pf "%s[" name;
           List.iteri
             (fun i t ->

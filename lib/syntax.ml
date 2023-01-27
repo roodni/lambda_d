@@ -53,6 +53,10 @@ module Term = struct
     | Lambda (_, _, _, s) | Pai (_, _, _, s)
     | AppNF (_, _, s) | ConstNF (_, _, s)
     | LambdaNF (_, _, _, s) | PaiNF (_, _, _, s) -> s
+  let mem_free v = function
+    | Star | Square -> false
+    | Var x -> v = x
+    | t -> VSet.mem v (free t)
   let add_free t set =
     match t with
     | Star | Square -> set

@@ -99,7 +99,7 @@ let assign env term =
             | t ->
                 found := true;
                 if !nf then nf := keepnf t;
-                if not !xdup && VSet.mem x (Term.free t)
+                if not !xdup && Term.mem_free x t
                   then xdup := true;
             | exception Not_found -> () )
           free;
